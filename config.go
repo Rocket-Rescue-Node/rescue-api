@@ -27,8 +27,8 @@ func parseArguments() (config, error) {
 	credentialSecret := flag.String("hmac-secret", "test-secret", "The secret to use for HMAC")
 	dbPath := flag.String("db-path", "db.sqlite3", "sqlite3 database path")
 	authValidityWindow := flag.String("auth-valid-for", "360h", "The duration after which a credential should be considered invalid, eg, 360h for 15 days")
-	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "127.0.0.1:8000", "Address for the Rescue Proxy gRPC API")
-	rocketscanAPIURL := flag.String("rocketscan-api-url", "http://127.0.0.1", "URL for the Rocketscan REST API")
+	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "", "Address for the Rescue Proxy gRPC API")
+	rocketscanAPIURL := flag.String("rocketscan-api-url", "", "URL for the Rocketscan REST API")
 	debug := flag.Bool("debug", false, "Whether to enable verbose logging")
 	flag.Parse()
 
