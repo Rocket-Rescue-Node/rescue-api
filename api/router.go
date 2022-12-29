@@ -50,23 +50,32 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		Timestamp: cred.Credential.Timestamp,
 	}
 
-	err = writeJSONResponse(w, http.StatusCreated, resp, "")
-	// TODO: check if we can supress ignorable errors, such as broken pipe, connection reset by peer, etc.
-	if err != nil {
-		ar.logger.Error("Failed to write JSON response", zap.Error(err))
-	}
-
-	return nil
+	return writeJSONResponse(w, http.StatusCreated, resp, "")
 }
 
 func NewAPIRouter(path string, svc *services.Service, logger *zap.Logger) *mux.Router {
+	// Create router.
 	ah := &apiRouter{
 		svc,
 		logger,
 	}
 	r := mux.NewRouter()
 	sr := r.PathPrefix(path).Subrouter()
-	sr.HandleFunc("/credentials", ah.CreateCredential).Methods("POST")
-	sr.HandleFunc("/credentials/", ah.CreateCredential).Methods("POST")
+
+	// Handler wrapper to log errors.
+	logError := func(h func(w http.ResponseWriter, r *http.Request) error) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if err := h(w, r); err != nil {
+				// TODO: check if we can/should supress ignorable errors, such as
+				// broken pipe, connection reset by peer, etc.
+				logger.Error("Error handling request", zap.Error(err))
+			}
+		}
+	}
+	createCred := logError(ah.CreateCredential)
+
+	// Register handlers.
+	sr.HandleFunc("/credentials", createCred).Methods("POST")
+	sr.HandleFunc("/credentials/", createCred).Methods("POST")
 	return r
 }
