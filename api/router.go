@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"net/http"
 	"strings"
@@ -44,9 +43,14 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		zap.String("nodeID", hex.EncodeToString(cred.Credential.NodeId)),
 		zap.Int64("timestamp", cred.Credential.Timestamp))
 
+	password, err := cred.Base64URLEncodePassword()
+	if err != nil {
+		return writeJSONError(w, err)
+	}
+
 	resp := CreateCredentialResponse{
-		Username:  base64.URLEncoding.EncodeToString(cred.Credential.NodeId),
-		Password:  base64.URLEncoding.EncodeToString(cred.Mac),
+		Username:  cred.Base64URLEncodeUsername(),
+		Password:  password,
 		Timestamp: cred.Credential.Timestamp,
 	}
 
