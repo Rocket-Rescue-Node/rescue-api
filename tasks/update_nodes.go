@@ -67,7 +67,7 @@ func (t *UpdateNodesTask) updateUsingRocketscan() error {
 	return nil
 }
 
-func (t *UpdateNodesTask) Run() error {
+func (t *UpdateNodesTask) Run() {
 	var sleepFor time.Duration
 	for {
 		// Try to update using the Rescue Proxy API.
