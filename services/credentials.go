@@ -25,7 +25,7 @@ const (
 	credsMinValidityWindow = time.Duration(2*24*60*60) * time.Second
 
 	// The pattern for credential request messages.
-	credentialRequestPattern = "^Rescue Node ([0-9]{10})$"
+	credentialRequestPattern = `(?i)^Rescue Node ([0-9]{10})$`
 	// The maximum age for a credential request to be considered valid.
 	credsRequestMaxAge = time.Duration(5) * time.Minute
 )
