@@ -27,7 +27,7 @@ const (
 	// The pattern for credential request messages.
 	credentialRequestPattern = `(?i)^Rescue Node ([0-9]{10})$`
 	// The maximum age for a credential request to be considered valid.
-	credsRequestMaxAge = time.Duration(5) * time.Minute
+	credsRequestMaxAge = time.Duration(15) * time.Minute
 )
 
 var (
