@@ -16,12 +16,11 @@ type apiRouter struct {
 	logger *zap.Logger
 }
 
-func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) {
+func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
 	// Try to decode the request body.
 	var req CreateCredentialRequest
 	if err := readJSONRequest(w, r, &req); err != nil {
-		writeJSONError(w, err)
-		return
+		return writeJSONError(w, err)
 	}
 
 	ar.logger.Info("Got credential request",
@@ -33,14 +32,12 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) {
 
 	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
 	if err != nil {
-		writeJSONError(w, err)
-		return
+		return writeJSONError(w, err)
 	}
 
 	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig)
 	if err != nil {
-		writeJSONError(w, err)
-		return
+		return writeJSONError(w, err)
 	}
 
 	ar.logger.Info("Created credential",
@@ -53,7 +50,13 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) {
 		Timestamp: cred.Credential.Timestamp,
 	}
 
-	writeJSONResponse(w, http.StatusCreated, resp, "")
+	err = writeJSONResponse(w, http.StatusCreated, resp, "")
+	// TODO: check if we can supress ignorable errors, such as broken pipe, connection reset by peer, etc.
+	if err != nil {
+		ar.logger.Error("Failed to write JSON response", zap.Error(err))
+	}
+
+	return nil
 }
 
 func NewAPIRouter(path string, svc *services.Service, logger *zap.Logger) *mux.Router {

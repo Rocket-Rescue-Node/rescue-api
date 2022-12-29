@@ -65,30 +65,27 @@ func writeJSONResponse(w http.ResponseWriter, code int, data interface{}, err st
 	resp, _ := json.Marshal(response{Data: data, Error: err})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	return w.Write(resp)
+	_, e := w.Write(resp)
+	return e
 }
 
-func writeJSONError(w http.ResponseWriter, err error) {
+func writeJSONError(w http.ResponseWriter, err error) error {
 	var de *decodingError
 	if ok := errors.As(err, &de); ok {
-		writeJSONResponse(w, de.status, nil, de.msg)
-		return
+		return writeJSONResponse(w, de.status, nil, de.msg)
 	}
 
 	if ok := errors.Is(err, &services.ValidationError{}); ok {
-		writeJSONResponse(w, http.StatusBadRequest, nil, err.Error())
-		return
+		return writeJSONResponse(w, http.StatusBadRequest, nil, err.Error())
 	}
 
 	if ok := errors.Is(err, &services.AuthenticationError{}); ok {
-		writeJSONResponse(w, http.StatusUnauthorized, nil, err.Error())
-		return
+		return writeJSONResponse(w, http.StatusUnauthorized, nil, err.Error())
 	}
 
 	if ok := errors.Is(err, &services.AuthorizationError{}); ok {
-		writeJSONResponse(w, http.StatusForbidden, nil, err.Error())
-		return
+		return writeJSONResponse(w, http.StatusForbidden, nil, err.Error())
 	}
 
-	writeJSONResponse(w, http.StatusInternalServerError, nil, "internal server error")
+	return writeJSONResponse(w, http.StatusInternalServerError, nil, "internal server error")
 }
