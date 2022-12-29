@@ -29,7 +29,7 @@ func (c *RocketscanAPIClient) GetRocketPoolNodes() ([]RocketscanAPINode, error) 
 		return nil, err
 	}
 
-	// Limit the response size to 10MB (average response size is 3MB).
+	// Limit the response size to 64MB (average response size is 3MB).
 	body, err := util.HTTPLimitedGet(url, 10*1024*1024)
 	if err != nil {
 		return nil, err
