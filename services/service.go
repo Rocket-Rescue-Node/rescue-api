@@ -162,7 +162,7 @@ func (s *Service) prepareStatements() error {
 func (s *Service) isNodeRegistered(nodeID *models.NodeID) bool {
 	// If the node registry is stale, all nodes are considered unregistered.
 	if s.clock.Now().After(s.nodes.LastUpdated.Add(nodeRegistryMaxAge)) {
-		s.logger.Warn("Node registry is too old, refusing access to node",
+		s.logger.Error("Node registry is too old, refusing access to node",
 			zap.String("nodeID", nodeID.Hex()))
 		return false
 	}
