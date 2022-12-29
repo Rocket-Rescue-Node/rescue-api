@@ -163,16 +163,17 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 		return nil, err
 	}
 
-	// Commit the transaction.
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
 	// Create the credential.
 	cred, err := s.cm.Create(now, nodeID.Bytes())
 	if err != nil {
 		return nil, err
 	}
+
+	// Commit the transaction.
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
 	s.logger.Info(
 		"Issued credential",
 		zap.String("nodeID", hex.EncodeToString(cred.Credential.NodeId)),
