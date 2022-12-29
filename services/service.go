@@ -176,7 +176,7 @@ func (s *Service) isNodeAuthorized(nodeID *models.NodeID, svc authz.Resource) bo
 		s.logger.Error("Failed to begin database transaction", zap.Error(err))
 		return false
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	stmt := tx.Stmt(s.isNodeAuthorizedStmt)
 	defer stmt.Close()
 	rows, err := stmt.Query(nodeID.Bytes(), svc, authz.Deny)
@@ -201,4 +201,8 @@ func (s *Service) Deinit() {
 		(*stmt).Close()
 		*stmt = nil
 	}
+}
+
+func rollback(tx *sql.Tx) {
+	_ = tx.Rollback()
 }

@@ -118,7 +118,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 
 	// Fetch the last credential and the number of credentials issued for this node in the current
 	// window. This is done to ensure that:
