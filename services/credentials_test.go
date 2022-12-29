@@ -21,6 +21,7 @@ import (
 func setupTestService(clock clockwork.Clock, avw time.Duration) (*Service, error) {
 	var err error
 
+	// Workaround for "no such table" errors.
 	// Each connection to ":memory:" opens a brand new in-memory sql database,
 	// so if the stdlib's sql engine happens to open another connection and
 	// you've only specified ":memory:", that connection will see a brand new
@@ -28,8 +29,14 @@ func setupTestService(clock clockwork.Clock, avw time.Duration) (*Service, error
 	// Every connection to this string will point to the same in-memory database.
 	// Note that if the last database connection in the pool closes, the in-memory
 	// database is deleted. Make sure the max idle connection limit is > 0, and
-	/// the connection lifetime is infinite.
-	db, err := database.Open("file::memory:?cache=shared&_busy_timeout=0")
+	// the connection lifetime is infinite.
+	// Reference: https://pkg.go.dev/github.com/mattn/go-sqlite3#section-readme
+	//
+	// Note that this issue can also be worked around by using a single DB
+	// connection, which we do in the main application for performance reasons
+	// (see database.go). However, we want to use multiple connections
+	// in the tests to try to catch potential concurrency issues.
+	db, err := database.Open("file::memory:?cache=shared")
 	if err != nil {
 		return nil, err
 	}
