@@ -15,7 +15,10 @@ type Wallet struct {
 }
 
 // Recovers the address of the signer from a message and signature.
-// The signature must be in the format returned by crypto.Sign()
+// Expects a signature in the format returned by eth_sign:
+// https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sign
+// This is the format currently used to sign messages by the Rocket Pool smartnode stack:
+// https://github.com/rocket-pool/smartnode/blob/9ded8d070bdd81798813e16b53657f600bab781e/shared/services/wallet/wallet.go#L305
 func RecoverAddressFromSignature(msg []byte, sig []byte) (*common.Address, error) {
 	if len(sig) != crypto.SignatureLength {
 		return nil, secp256k1.ErrInvalidSignatureLen
@@ -57,7 +60,8 @@ func NewWallet() (*Wallet, error) {
 }
 
 // Signs a message with the wallet's private key.
-// The signature is in the format returned by crypto.Sign().
+// Return a signature in the format used by eth_sign.
+// See RecoverAddressFromSignature() for more details.
 func (w *Wallet) Sign(msg []byte) ([]byte, error) {
 	sig, err := crypto.Sign(accounts.TextHash(msg), w.Key)
 	if err != nil {
@@ -65,7 +69,6 @@ func (w *Wallet) Sign(msg []byte) ([]byte, error) {
 	}
 
 	// Change V from 0/1 to 27/28 to match the Ethereum Yellow Paper.
-	// See RecoverAddressFromSignature() for more details.
 	sig[crypto.RecoveryIDOffset] += 27
 	return sig, nil
 }
