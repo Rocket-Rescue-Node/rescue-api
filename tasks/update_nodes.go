@@ -15,6 +15,7 @@ type UpdateNodesTask struct {
 	rescueProxyAddr string
 	rocketscanURL   string
 	nodes           *models.NodeRegistry
+	done            chan bool
 	logger          *zap.Logger
 }
 
@@ -23,6 +24,7 @@ func NewUpdateNodesTask(proxy, rocketscan string, nodes *models.NodeRegistry, lo
 		proxy,
 		rocketscan,
 		nodes,
+		make(chan bool),
 		logger,
 	}
 }
@@ -68,24 +70,31 @@ func (t *UpdateNodesTask) updateUsingRocketscan() error {
 }
 
 func (t *UpdateNodesTask) Run() {
-	var sleepFor time.Duration
+	ticker := time.NewTicker(time.Duration(300) * time.Second)
+	defer ticker.Stop()
 	for {
-		// Try to update using the Rescue Proxy API.
-		err := t.updateUsingRescueProxy()
-		// If that fails, try to update using the Rocketscan API.
-		if err != nil {
-			err = t.updateUsingRocketscan()
+		select {
+		case <-t.done:
+			t.logger.Info("Update nodes task stopped")
+			return
+		case <-ticker.C:
+			// Try to update using the Rescue Proxy API.
+			err := t.updateUsingRescueProxy()
+			// If that fails, try to update using the Rocketscan API.
+			if err != nil {
+				err = t.updateUsingRocketscan()
+			}
+			if err != nil { // If both sources fail, try again quickly.
+				ticker.Reset(time.Duration(30) * time.Second)
+			} else { // If at least one source succeeds, sleep for a longer time.
+				ticker.Reset(time.Duration(300) * time.Second)
+				t.nodes.LastUpdated = time.Now()
+			}
 		}
-		if err != nil { // If both sources fail, try again quickly.
-			sleepFor = time.Duration(30)
-		} else { // If at least one source succeeds, sleep for a longer time.
-			sleepFor = time.Duration(300)
-			t.nodes.LastUpdated = time.Now()
-		}
-		time.Sleep(sleepFor * time.Second)
 	}
 }
 
 func (t *UpdateNodesTask) Stop() error {
+	t.done <- true
 	return nil
 }
