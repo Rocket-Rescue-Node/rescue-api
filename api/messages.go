@@ -61,11 +61,11 @@ func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) er
 	return nil
 }
 
-func writeJSONResponse(w http.ResponseWriter, code int, data interface{}, err string) {
+func writeJSONResponse(w http.ResponseWriter, code int, data interface{}, err string) error {
 	resp, _ := json.Marshal(response{Data: data, Error: err})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write(resp)
+	return w.Write(resp)
 }
 
 func writeJSONError(w http.ResponseWriter, err error) {
