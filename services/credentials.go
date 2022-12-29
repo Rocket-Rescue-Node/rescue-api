@@ -20,7 +20,7 @@ const (
 	// Max number of credentials that can be requested in a given time window.
 	credsQuota = 4
 	// Time window in which the credential quota is calculated.
-	credsQuotaWindow = time.Duration(365*24*60*60) * time.Second
+	credsQuotaWindow = time.Duration(365*24) * time.Hour
 	// A credential will be reused if it is valid for at least this long.
 	credsMinValidityWindow = time.Duration(2*24*60*60) * time.Second
 
