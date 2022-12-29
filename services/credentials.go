@@ -22,7 +22,7 @@ const (
 	// Time window in which the credential quota is calculated.
 	credsQuotaWindow = time.Duration(365*24) * time.Hour
 	// A credential will be reused if it is valid for at least this long.
-	credsMinValidityWindow = time.Duration(2*24*60*60) * time.Second
+	credsMinValidityWindow = time.Duration(48) * time.Hour
 
 	// The pattern for credential request messages.
 	credentialRequestPattern = `(?i)^Rescue Node ([0-9]{10})$`
