@@ -68,7 +68,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error initializing logger: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
 
 	// Connect to the database and initialize the database schema, if necessary.
 	var db *sql.DB
@@ -132,7 +131,7 @@ func main() {
 
 	// Shut down gracefully
 	logger.Debug("Received termination signal, shutting down...")
-	server.Shutdown(context.Background())
+	_ = server.Shutdown(context.Background())
 	listener.Close()
 
 	// Wait for the listener/server to exit
@@ -142,7 +141,11 @@ func main() {
 	svc.Deinit()
 
 	// Stop the background tasks
-	updateNodes.Stop()
+	if err = updateNodes.Stop(); err != nil {
+		logger.Error("Error stopping background tasks", zap.Error(err))
+	}
 
 	logger.Info("Shutdown complete")
+
+	_ = logger.Sync()
 }
