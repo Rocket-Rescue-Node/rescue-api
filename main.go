@@ -45,8 +45,10 @@ func initLogger(debug bool) error {
 
 	if debug {
 		cfg = zap.NewDevelopmentConfig()
+		cfg.Level.SetLevel(zap.DebugLevel)
 	} else {
 		cfg = zap.NewProductionConfig()
+		cfg.Level.SetLevel(zap.InfoLevel)
 	}
 
 	logger, err = cfg.Build()
@@ -105,7 +107,7 @@ func main() {
 
 	// Create the API router.
 	path := "/rescue/v1/"
-	router := api.NewAPIRouter(path, svc, logger)
+	router := api.NewAPIRouter(path, svc, cfg.AllowedOrigins, logger)
 	http.Handle(path, router)
 
 	// Listen on the provided address. This listener will be used by the HTTP server.
@@ -130,7 +132,7 @@ func main() {
 	waitForTermination()
 
 	// Shut down gracefully
-	logger.Debug("Received termination signal, shutting down...")
+	logger.Info("Received termination signal, shutting down...")
 	_ = server.Shutdown(context.Background())
 	listener.Close()
 
