@@ -45,10 +45,8 @@ func initLogger(debug bool) error {
 
 	if debug {
 		cfg = zap.NewDevelopmentConfig()
-		cfg.Level.SetLevel(zap.DebugLevel)
 	} else {
 		cfg = zap.NewProductionConfig()
-		cfg.Level.SetLevel(zap.InfoLevel)
 	}
 
 	logger, err = cfg.Build()
