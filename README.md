@@ -2,7 +2,7 @@
 
 # Rescue-API
 
-The Rescue-API allows node operators to request credentials for the [Rescue Node](https://rescuenode.com)
+The Rescue-API allows Node Operators to request credentials for the [Rescue Node](https://rescuenode.com)
 ([GitHub](https://github.com/Rocket-Rescue-Node/rescue-proxy)).
 
 
