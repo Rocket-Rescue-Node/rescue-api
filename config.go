@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -17,7 +18,20 @@ type config struct {
 	DBPath             string
 	RescueProxyAPIAddr string
 	RocketscanAPIURL   string
+	AllowedOrigins     []string
 	Debug              bool
+}
+
+// Check that URL is valid.
+func checkURL(data string) error {
+	url, err := url.Parse(data)
+	if err != nil {
+		return err
+	}
+	if url.Scheme != "" && url.Scheme != "http" && url.Scheme != "https" {
+		return fmt.Errorf("invalid URL scheme: %s", url.Scheme)
+	}
+	return nil
 }
 
 // Parse command-line arguments.
@@ -29,6 +43,7 @@ func parseArguments() (config, error) {
 	authValidityWindow := flag.String("auth-valid-for", "360h", "The duration after which a credential should be considered invalid, eg, 360h for 15 days")
 	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "", "Address for the Rescue Proxy gRPC API")
 	rocketscanAPIURL := flag.String("rocketscan-api-url", "", "URL for the Rocketscan REST API")
+	allowedOrigins := flag.String("allowed-origins", "localhost", "Comma-separated list of allowed CORS origins")
 	debug := flag.Bool("debug", false, "Whether to enable verbose logging")
 	flag.Parse()
 
@@ -45,10 +60,18 @@ func parseArguments() (config, error) {
 		return config{}, fmt.Errorf("invalid -rescue-proxy-api-addr argument: %v", err)
 	}
 
-	if url, err := url.Parse(*rocketscanAPIURL); err != nil {
+	if err := checkURL(*rocketscanAPIURL); err != nil {
 		return config{}, fmt.Errorf("invalid -rocketscan-api-url argument: %v", err)
-	} else if url.Scheme != "" && url.Scheme != "http" && url.Scheme != "https" {
-		return config{}, fmt.Errorf("invalid -rocketscan-api-url argument: invalid scheme '%s'", url.Scheme)
+	}
+
+	// Check that CORS allowed origins are valid.
+	origins := strings.Split(*allowedOrigins, ",")
+	if *allowedOrigins != "localhost" && *allowedOrigins != "*" {
+		for _, origin := range origins {
+			if err := checkURL(origin); err != nil {
+				return config{}, fmt.Errorf("invalid -allowed-origins argument: %v", err)
+			}
+		}
 	}
 
 	return config{
@@ -58,6 +81,7 @@ func parseArguments() (config, error) {
 		DBPath:             *dbPath,
 		RescueProxyAPIAddr: *proxyAPIAddr,
 		RocketscanAPIURL:   *rocketscanAPIURL,
+		AllowedOrigins:     origins,
 		Debug:              *debug,
 	}, nil
 }

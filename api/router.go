@@ -7,6 +7,7 @@ import (
 
 	"github.com/Rocket-Pool-Rescue-Node/rescue-api/services"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"go.uber.org/zap"
 )
 
@@ -70,7 +71,7 @@ func (ar *apiRouter) wrapHandler(h func(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func NewAPIRouter(path string, svc *services.Service, logger *zap.Logger) *mux.Router {
+func NewAPIRouter(path string, svc *services.Service, origins []string, logger *zap.Logger) *mux.Router {
 	// Create router.
 	ah := &apiRouter{
 		svc,
@@ -80,7 +81,19 @@ func NewAPIRouter(path string, svc *services.Service, logger *zap.Logger) *mux.R
 	sr := r.PathPrefix(path).Subrouter()
 
 	// Register handlers.
-	sr.HandleFunc("/credentials", ah.wrapHandler(ah.CreateCredential)).Methods("POST")
-	sr.HandleFunc("/credentials/", ah.wrapHandler(ah.CreateCredential)).Methods("POST")
+	allowedMethods := []string{"GET", "POST", "OPTIONS"}
+	sr.HandleFunc("/credentials", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
+	sr.HandleFunc("/credentials/", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
+
+	// CORS support.
+	ch := cors.New(cors.Options{
+		AllowedOrigins:   origins,
+		AllowedMethods:   allowedMethods,
+		ExposedHeaders:   []string{"Accept", "Content-Type"},
+		AllowCredentials: false,
+		Debug:            logger.Level() == zap.DebugLevel,
+	})
+	sr.Use(ch.Handler)
+
 	return r
 }
