@@ -73,7 +73,6 @@ If you need to create a multi-arch image, you can edit `Makefile` and add
 additional architectures to the `PLATFORMS` variable.
 
 ```bash
-VERSION=<version> make docker-build
 VERSION=<version> make docker-publish
 ```
 
