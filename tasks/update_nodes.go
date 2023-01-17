@@ -77,7 +77,7 @@ func (t *UpdateNodesTask) updateUsingRocketscan() error {
 }
 
 func (t *UpdateNodesTask) Run() {
-	ticker := time.NewTicker(time.Duration(300) * time.Second)
+	ticker := time.NewTicker(time.Duration(1) * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
