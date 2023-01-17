@@ -34,7 +34,7 @@ var (
 	// They delay between retries when creating a credential.
 	// Values are taken from SQLite's default busy handler.
 	dbRetryDelayMs = []int{1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50, 100}
-	dbTries        = len(dbRetryDelayMs)
+	maxDBTries     = len(dbRetryDelayMs)
 )
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.
@@ -43,7 +43,8 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte) (*models.Aut
 	var cred *models.AuthenticatedCredential
 	var err error
 
-	for i := 0; i < dbTries; i++ {
+	var try int
+	for try = 0; try < maxDBTries; try++ {
 		// Try to create the credential.
 		if cred, err = s.CreateCredential(msg, sig); err == nil {
 			break
@@ -62,9 +63,9 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte) (*models.Aut
 		}
 
 		// Retry after a delay.
-		sleepFor := dbRetryDelayMs[i]
+		sleepFor := dbRetryDelayMs[try]
 		s.logger.Warn("Failed to issue credential. Retrying",
-			zap.Int("try", i),
+			zap.Int("try", try),
 			zap.Int("retryMs", sleepFor),
 			zap.Error(err),
 		)
@@ -73,7 +74,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte) (*models.Aut
 
 	if err != nil {
 		s.logger.Warn("Failed to issue credential. Giving up.",
-			zap.Int("tries", dbTries),
+			zap.Int("tries", try),
 			zap.Error(err))
 	}
 
