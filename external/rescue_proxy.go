@@ -2,29 +2,47 @@ package external
 
 import (
 	"context"
+	"crypto/tls"
 	"time"
 
 	proxy "github.com/Rocket-Pool-Rescue-Node/rescue-proxy/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type RescueProxyAPIClient struct {
 	address string
+	secure  bool
 	conn    *grpc.ClientConn
 	client  proxy.ApiClient
 }
 
-func NewRescueProxyAPIClient(address string) *RescueProxyAPIClient {
-	return &RescueProxyAPIClient{address: address}
+func NewRescueProxyAPIClient(address string, secure bool) *RescueProxyAPIClient {
+	return &RescueProxyAPIClient{address: address, secure: secure}
 }
 
 func (c *RescueProxyAPIClient) connect() error {
 	var err error
-	do := grpc.WithTransportCredentials(insecure.NewCredentials())
+
+	// Try to connect to the Rescue Proxy API using TLS.
+	// An empty TLS config will use the system's root CAs.
+	tc := credentials.NewTLS(&tls.Config{})
+	do := grpc.WithTransportCredentials(tc)
+	if c.conn, err = grpc.Dial(c.address, do); err == nil {
+		goto connected
+	}
+
+	// If TLS fails, try falling back to insecure gRPC.
+	if c.secure {
+		return err
+	}
+	do = grpc.WithTransportCredentials(insecure.NewCredentials())
 	if c.conn, err = grpc.Dial(c.address, do); err != nil {
 		return err
 	}
+
+connected:
 	c.client = proxy.NewApiClient(c.conn)
 	return nil
 }

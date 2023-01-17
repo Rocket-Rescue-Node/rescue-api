@@ -82,7 +82,13 @@ func main() {
 
 	// Background task to update the list of current Rocket Pool nodes.
 	nodes := models.NewNodeRegistry()
-	updateNodes := tasks.NewUpdateNodesTask(cfg.RescueProxyAPIAddr, cfg.RocketscanAPIURL, nodes, logger)
+	updateNodes := tasks.NewUpdateNodesTask(
+		cfg.RescueProxyAPIAddr,
+		cfg.RocketscanAPIURL,
+		nodes,
+		cfg.SecureGRPC,
+		logger,
+	)
 	go updateNodes.Run()
 
 	// Clock

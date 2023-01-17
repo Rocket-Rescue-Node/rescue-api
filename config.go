@@ -19,6 +19,7 @@ type config struct {
 	RescueProxyAPIAddr string
 	RocketscanAPIURL   string
 	AllowedOrigins     []string
+	SecureGRPC         bool
 	Debug              bool
 }
 
@@ -44,6 +45,7 @@ func parseArguments() (config, error) {
 	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "", "Address for the Rescue Proxy gRPC API")
 	rocketscanAPIURL := flag.String("rocketscan-api-url", "", "URL for the Rocketscan REST API")
 	allowedOrigins := flag.String("allowed-origins", "localhost", "Comma-separated list of allowed CORS origins")
+	secureGRPC := flag.Bool("secure-grpc", true, "Whether to enforce gRPC over TLS")
 	debug := flag.Bool("debug", false, "Whether to enable verbose logging")
 	flag.Parse()
 
@@ -82,6 +84,7 @@ func parseArguments() (config, error) {
 		RescueProxyAPIAddr: *proxyAPIAddr,
 		RocketscanAPIURL:   *rocketscanAPIURL,
 		AllowedOrigins:     origins,
+		SecureGRPC:         *secureGRPC,
 		Debug:              *debug,
 	}, nil
 }

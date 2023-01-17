@@ -16,15 +16,22 @@ type UpdateNodesTask struct {
 	rocketscanURL   string
 	nodes           *models.NodeRegistry
 	done            chan bool
+	secureGRPC      bool
 	logger          *zap.Logger
 }
 
-func NewUpdateNodesTask(proxy, rocketscan string, nodes *models.NodeRegistry, logger *zap.Logger) *UpdateNodesTask {
+func NewUpdateNodesTask(
+	proxy, rocketscan string,
+	nodes *models.NodeRegistry,
+	secureGRPC bool,
+	logger *zap.Logger,
+) *UpdateNodesTask {
 	return &UpdateNodesTask{
 		proxy,
 		rocketscan,
 		nodes,
 		make(chan bool),
+		secureGRPC,
 		logger,
 	}
 }
@@ -34,7 +41,7 @@ func (t *UpdateNodesTask) updateUsingRescueProxy() error {
 	src := "rescue-proxy"
 	t.logger.Info("Updating Rocket Pool node registry...", zap.String("source", src))
 
-	rescueProxyAPI := external.NewRescueProxyAPIClient(t.rescueProxyAddr)
+	rescueProxyAPI := external.NewRescueProxyAPIClient(t.rescueProxyAddr, t.secureGRPC)
 	defer rescueProxyAPI.Close()
 	nodes, err := rescueProxyAPI.GetRocketPoolNodes()
 	if err != nil {
