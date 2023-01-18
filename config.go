@@ -66,7 +66,7 @@ func parseArguments() (config, error) {
 		return config{}, fmt.Errorf("invalid -rescue-proxy-api-addr argument: %v", err)
 	}
 
-	if err := checkURL(*rocketscanAPIURL, []string{"http", "https", ""}); err != nil {
+	if err := checkURL(*rocketscanAPIURL, "http", "https", ""); err != nil {
 		return config{}, fmt.Errorf("invalid -rocketscan-api-url argument: %v", err)
 	}
 
