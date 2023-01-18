@@ -32,7 +32,8 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 
 	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
 	if err != nil {
-		return writeJSONError(w, err)
+		msg := "invalid signature"
+		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
 	}
 
 	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig)
