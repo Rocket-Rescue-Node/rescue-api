@@ -24,7 +24,7 @@ type config struct {
 }
 
 // Check that URL is valid.
-func checkURL(data string, allowedSchemes []string) error {
+func checkURL(data string, allowedSchemes ...string) error {
 	url, err := url.Parse(data)
 	if err != nil {
 		return err
