@@ -74,7 +74,7 @@ func parseArguments() (config, error) {
 	origins := strings.Split(*allowedOrigins, ",")
 	if *allowedOrigins != "*" {
 		for _, origin := range origins {
-			if err := checkURL(origin, []string{"http", "https"}); err != nil {
+			if err := checkURL(origin, "http", "https"); err != nil {
 				return config{}, fmt.Errorf("invalid -allowed-origins argument: %v", err)
 			}
 		}
