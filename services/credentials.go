@@ -44,7 +44,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte) (*models.Aut
 	var err error
 
 	var try int
-	for try = 0; try < maxDBTries; try++ {
+	for try = range maxDBTries {
 		// Try to create the credential.
 		if cred, err = s.CreateCredential(msg, sig); err == nil {
 			break
