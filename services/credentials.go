@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	// They delay between retries when creating a credential.
+	// The delay between retries when creating a credential.
 	// Values are taken from SQLite's default busy handler.
 	dbRetryDelayMs = []int{1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50, 100}
 	maxDBTries     = len(dbRetryDelayMs)
