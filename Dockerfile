@@ -1,4 +1,4 @@
-FROM golang:1.19-bullseye AS builder
+FROM golang:1.20-bullseye AS builder
 COPY . /src
 RUN set -eu \
     && cd /src \
