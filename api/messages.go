@@ -6,7 +6,10 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strings"
 
+	"github.com/Rocket-Pool-Rescue-Node/credentials"
+	"github.com/Rocket-Pool-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Pool-Rescue-Node/rescue-api/services"
 )
 
@@ -29,6 +32,8 @@ type CreateCredentialRequest struct {
 	Msg     string `json:"msg"`
 	Sig     string `json:"sig"`
 	Version string `json:"version"`
+
+	operatorType credentials.OperatorType `json:"-"`
 }
 
 type CreateCredentialResponse struct {
@@ -56,6 +61,12 @@ func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) er
 	if err != nil || dec.Decode(&struct{}{}) != io.EOF {
 		const msg = "invalid or multiple JSON objects in request body"
 		return &decodingError{status: http.StatusBadRequest, msg: msg}
+	}
+
+	// Check querystring for operator_type
+	operatorType, ok := r.URL.Query()["operator_type"]
+	if ok && len(operatorType) > 0 && strings.EqualFold(operatorType[0], "solo") {
+		req.(*CreateCredentialRequest).operatorType = credentials.OperatorType(pb.OperatorType_OT_SOLO)
 	}
 
 	return nil

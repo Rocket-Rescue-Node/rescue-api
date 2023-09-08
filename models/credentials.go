@@ -13,7 +13,8 @@ const (
 )
 
 type CredentialEvent struct {
-	NodeID    NodeID
-	Timestamp int64
-	Type      CredentialEventType
+	NodeID       NodeID
+	Timestamp    int64
+	Type         CredentialEventType
+	OperatorType credentials.OperatorType
 }

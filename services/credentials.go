@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Rocket-Pool-Rescue-Node/credentials"
+	"github.com/Rocket-Pool-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
 	authz "github.com/Rocket-Pool-Rescue-Node/rescue-api/models/authorization"
 	"github.com/Rocket-Pool-Rescue-Node/rescue-api/util"
@@ -17,10 +19,6 @@ import (
 )
 
 const (
-	// Max number of credentials that can be requested in a given time window.
-	credsQuota = 4
-	// Time window in which the credential quota is calculated.
-	credsQuotaWindow = time.Duration(365*24) * time.Hour
 	// A credential will be reused if it is valid for at least this long.
 	credsMinValidityWindow = time.Duration(48) * time.Hour
 
@@ -30,22 +28,74 @@ const (
 	credsRequestMaxAge = time.Duration(15) * time.Minute
 )
 
+type quota struct {
+	// Max number of credentials that can be requested in a given time window.
+	count uint
+	// Time window in which the credential quota is calculated.
+	window time.Duration
+	// Duration a credential is valid for
+	authValidityWindow time.Duration
+}
+
 var (
 	// The delay between retries when creating a credential.
 	// Values are taken from SQLite's default busy handler.
 	dbTryDelayMs = []int{1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50, 100}
+
+	quotas = map[credentials.OperatorType]quota{
+		pb.OperatorType_OT_ROCKETPOOL: quota{
+			count:              4,
+			window:             time.Duration(365*24) * time.Hour,
+			authValidityWindow: time.Duration(15*24) * time.Hour,
+		},
+		pb.OperatorType_OT_SOLO: quota{
+			count:              3,
+			window:             time.Duration(365*24) * time.Hour,
+			authValidityWindow: time.Duration(10*24) * time.Hour,
+		},
+	}
 )
+
+func credsQuotaWindow(ot credentials.OperatorType) time.Duration {
+	quota, ok := quotas[ot]
+	if !ok {
+		// Default to a year
+		return time.Duration(365*24) * time.Hour
+	}
+
+	return quota.window
+}
+
+func credsQuota(ot credentials.OperatorType) int64 {
+	quota, ok := quotas[ot]
+	if !ok {
+		// Default to one
+		return 1
+	}
+
+	return int64(quota.count)
+}
+
+func authValidityWindow(ot credentials.OperatorType) time.Duration {
+	quota, ok := quotas[ot]
+	if !ok {
+		// Default to 10 days
+		return time.Duration(10*24) * time.Hour
+	}
+
+	return quota.authValidityWindow
+}
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.
 // This method will retry if creating a credential fails.
-func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte) (*models.AuthenticatedCredential, error) {
+func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var cred *models.AuthenticatedCredential
 	var err error
 
 	var try int
 	for try = range dbTryDelayMs {
 		// Try to create the credential.
-		if cred, err = s.CreateCredential(msg, sig); err == nil {
+		if cred, err = s.CreateCredential(msg, sig, ot); err == nil {
 			break
 		}
 
@@ -82,7 +132,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte) (*models.Aut
 
 // Creates a new credential for a node. If a valid credential exists, it will be returned instead.
 // No retry logic is implemented, so it is up to the caller to retry if it does not succeed.
-func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.AuthenticatedCredential, error) {
+func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
 	nodeID, err := util.RecoverAddressFromSignature(msg, sig)
@@ -103,9 +153,16 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 		return nil, &AuthenticationError{"timestamp is too old"}
 	}
 
-	// Check if this node is part of Rocket Pool.
-	if !s.isNodeRegistered(nodeID) {
-		return nil, &AuthorizationError{"node is not registered"}
+	// Check if this node is part of Rocket Pool, or a valid 0x01 credential.
+	switch ot {
+	case pb.OperatorType_OT_ROCKETPOOL:
+		if !s.isNodeRegistered(nodeID) {
+			return nil, &AuthorizationError{"node is not registered"}
+		}
+	case pb.OperatorType_OT_SOLO:
+		if !s.isWithdrawalAddress(nodeID) {
+			return nil, &AuthorizationError{"wallet is not a withdrawal address for any validator"}
+		}
 	}
 
 	// Make sure that the node is not banned from using the service.
@@ -126,10 +183,10 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 	// - The node does not request more credentials than allowed.
 	now := s.clock.Now()
 	// The timestamp of the first event in the current window.
-	currentWindowStart := now.Add(-credsQuotaWindow).Unix()
+	currentWindowStart := now.Add(-credsQuotaWindow(ot)).Unix()
 	gcs := tx.Stmt(s.getCredEventsStmt)
 	defer gcs.Close()
-	row := gcs.QueryRow(nodeID.Bytes(), currentWindowStart, models.CredentialIssued)
+	row := gcs.QueryRow(nodeID.Bytes(), currentWindowStart, models.CredentialIssued, ot)
 	var credsCount, lastCredTimestamp int64
 	if err = row.Scan(&lastCredTimestamp, &credsCount); err != nil && err != sql.ErrNoRows {
 		return nil, err
@@ -139,18 +196,19 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 	//  * It expires in more than credsMinValidityWindow seconds, or
 	//  * No more credentials can be issued in the current window.
 	created := time.Unix(lastCredTimestamp, 0)
-	expires := created.Add(s.authValidityWindow)
-	if expires.After(now) && (expires.Sub(now) > credsMinValidityWindow || credsCount == credsQuota) {
-		return s.cm.Create(created, nodeID.Bytes())
+	expires := created.Add(authValidityWindow(ot))
+	if expires.After(now) && (expires.Sub(now) > credsMinValidityWindow || credsCount == credsQuota(ot)) {
+		return s.cm.Create(created, nodeID.Bytes(), ot)
 	}
 
 	// Has the node reached its quota for the current window?
-	if credsCount >= credsQuota {
+	if credsCount >= credsQuota(ot) {
 		s.logger.Warn("Node has reached its quota for the current window",
 			zap.String("nodeID", nodeID.Hex()),
 			zap.Int64("credsCount", credsCount),
-			zap.Int64("credsQuota", credsQuota),
+			zap.Int64("credsQuota", credsQuota(ot)),
 			zap.Int64("currentWindowStart", currentWindowStart),
+			zap.String("operatorType", ot.String()),
 		)
 		return nil, &AuthorizationError{"node has requested too many credentials"}
 	}
@@ -158,13 +216,13 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 	// Store a "credential issued" event in the database.
 	acs := tx.Stmt(s.addCredEventStmt)
 	defer acs.Close()
-	_, err = acs.Exec(nodeID.Bytes(), now.Unix(), models.CredentialIssued)
+	_, err = acs.Exec(nodeID.Bytes(), now.Unix(), models.CredentialIssued, ot)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create the credential.
-	cred, err := s.cm.Create(now, nodeID.Bytes())
+	cred, err := s.cm.Create(now, nodeID.Bytes(), ot)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +235,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte) (*models.Authenticate
 	s.logger.Info(
 		"Issued credential",
 		zap.String("nodeID", hex.EncodeToString(cred.Credential.NodeId)),
+		zap.String("operatorType", ot.String()),
 		zap.Int64("timestamp", cred.Credential.Timestamp),
 	)
 

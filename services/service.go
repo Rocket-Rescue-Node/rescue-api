@@ -59,12 +59,12 @@ func (a *AuthorizationError) Is(err error) bool {
 
 // ServiceConfig contains the configuration for a Service.
 type ServiceConfig struct {
-	DB                 *sql.DB
-	CM                 *creds.CredentialManager
-	AuthValidityWindow time.Duration
-	Nodes              *models.NodeRegistry
-	Logger             *zap.Logger
-	Clock              clockwork.Clock
+	DB                  *sql.DB
+	CM                  *creds.CredentialManager
+	Nodes               *models.NodeRegistry
+	WithdrawalAddresses *models.NodeRegistry
+	Logger              *zap.Logger
+	Clock               clockwork.Clock
 }
 
 // Services contain business logic, are responsible for interacting with the database,
@@ -72,12 +72,14 @@ type ServiceConfig struct {
 // They are called by the API handlers.
 type Service struct {
 	// Credentials
-	cm                 *creds.CredentialManager
-	authValidityWindow time.Duration
-	credRequestRegexp  *regexp.Regexp
+	cm                *creds.CredentialManager
+	credRequestRegexp *regexp.Regexp
 
 	// Active nodes on the Rocket Pool network
 	nodes *models.NodeRegistry
+
+	// Active validators' withdrawal addresses
+	withdrawalAddresses *models.NodeRegistry
 
 	// Database
 	db                   *sql.DB
@@ -93,13 +95,13 @@ type Service struct {
 func NewService(config *ServiceConfig) *Service {
 	re := regexp.MustCompile(credentialRequestPattern)
 	return &Service{
-		cm:                 config.CM,
-		db:                 config.DB,
-		nodes:              config.Nodes,
-		authValidityWindow: config.AuthValidityWindow,
-		credRequestRegexp:  re,
-		logger:             config.Logger,
-		clock:              config.Clock,
+		cm:                  config.CM,
+		db:                  config.DB,
+		nodes:               config.Nodes,
+		withdrawalAddresses: config.WithdrawalAddresses,
+		credRequestRegexp:   re,
+		logger:              config.Logger,
+		clock:               config.Clock,
 	}
 }
 
@@ -108,6 +110,42 @@ func (s *Service) Init() error {
 		return err
 	}
 	return s.prepareStatements()
+}
+
+func (s *Service) migrateTables() error {
+
+	// If operator_type isn't on the table, create it
+	var c int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info("credential_events") where name = "operator_type";`).Scan(&c)
+	if err != nil {
+		return err
+	}
+
+	if c == 0 {
+
+		// Update the primary key by copying the table, dropping the old version, and renaming it.
+		// Insert 0s for operator_type, as all events prior to the migration were RP NOs, who have operator_type 0.
+		_, err := s.db.Exec(`
+			CREATE TABLE _credential_events_copy (
+				node_id BLOB(20) NOT NULL,
+				timestamp INTEGER NOT NULL,
+				type INTEGER CHECK (type >= 0 AND type <= 1) NOT NULL,
+				operator_type INTEGER NOT NULL,
+				PRIMARY KEY (node_id, operator_type, timestamp)
+			);
+
+			INSERT INTO _credential_events_copy (node_id, timestamp, type, operator_type)
+				SELECT node_id, timestamp, type, 0 FROM credential_events;
+			DROP TABLE credential_events;
+			ALTER TABLE _credential_events_copy RENAME TO credential_events;
+		`)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) createTables() error {
@@ -128,6 +166,11 @@ func (s *Service) createTables() error {
 	if err != nil {
 		return err
 	}
+
+	err = s.migrateTables()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -136,13 +179,13 @@ func (s *Service) prepareStatements() error {
 
 	if s.getCredEventsStmt, err = s.db.Prepare(`
 		SELECT COALESCE(MAX(timestamp), 0), COUNT(*) FROM credential_events
-		WHERE node_id = ? AND timestamp > ? AND type = ?;
+		WHERE node_id = ? AND timestamp > ? AND type = ? AND operator_type = ?;
 	`); err != nil {
 		return err
 	}
 
 	if s.addCredEventStmt, err = s.db.Prepare(`
-		INSERT INTO credential_events (node_id, timestamp, type) VALUES (?, ?, ?);
+		INSERT INTO credential_events (node_id, timestamp, type, operator_type) VALUES (?, ?, ?, ?);
 	`); err != nil {
 		return err
 	}
@@ -167,6 +210,17 @@ func (s *Service) isNodeRegistered(nodeID *models.NodeID) bool {
 		return false
 	}
 	return s.nodes.Has(*nodeID)
+}
+
+// isWithdrawalAddress checks if an address is the withdrawal credential for at least one active validator.
+func (s *Service) isWithdrawalAddress(nodeID *models.NodeID) bool {
+	// If the registry is stale, all nodes are considered invalid.
+	if s.clock.Now().After(s.withdrawalAddresses.LastUpdated.Add(nodeRegistryMaxAge)) {
+		s.logger.Error("Withdrawal Address registry is too old, refusing access to user",
+			zap.String("withdrawal_address", nodeID.Hex()))
+		return false
+	}
+	return s.withdrawalAddresses.Has(*nodeID)
 }
 
 // isNodeAuthorized checks if a Node is authorized to access a Resource.

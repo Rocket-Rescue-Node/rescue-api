@@ -28,6 +28,7 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		zap.String("msg", req.Msg),
 		zap.String("sig", req.Sig),
 		zap.String("version", req.Version),
+		zap.Int("operator_type", int(req.operatorType)),
 	)
 
 	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
@@ -36,13 +37,14 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
 	}
 
-	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig)
+	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
 
 	ar.logger.Info("Created credential",
 		zap.String("nodeID", hex.EncodeToString(cred.Credential.NodeId)),
+		zap.Int("operator_type", int(cred.Credential.OperatorType)),
 		zap.Int64("timestamp", cred.Credential.Timestamp))
 
 	password, err := cred.Base64URLEncodePassword()

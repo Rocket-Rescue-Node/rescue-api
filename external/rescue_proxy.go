@@ -63,6 +63,22 @@ func (c *RescueProxyAPIClient) GetRocketPoolNodes() ([][]byte, error) {
 	return r.GetNodeIds(), nil
 }
 
+func (c *RescueProxyAPIClient) GetWithdrawalAddresses() ([][]byte, error) {
+	// Connect if not yet connected.
+	if c.conn == nil || c.client == nil {
+		if err := c.connect(); err != nil {
+			return nil, err
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := c.client.GetSoloValidators(ctx, &proxy.SoloValidatorsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return r.GetWithdrawalAddresses(), nil
+}
+
 func (c *RescueProxyAPIClient) Close() error {
 	if c.conn == nil {
 		return nil
