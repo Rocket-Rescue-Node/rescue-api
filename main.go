@@ -91,18 +91,28 @@ func main() {
 	)
 	go updateNodes.Run()
 
+	// Background task to update the list of withdrawal addresses.
+	withdrawalAddresses := models.NewNodeRegistry()
+	updateWithdrawalAddresses := tasks.NewUpdateWithdrawalAddressesTask(
+		cfg.RescueProxyAPIAddr,
+		withdrawalAddresses,
+		cfg.SecureGRPC,
+		logger,
+	)
+	go updateWithdrawalAddresses.Run()
+
 	// Clock
 	clock := clockwork.NewRealClock()
 
 	// Services contain the business logic and are used by the API handlers.
 	// Only CreateCredential is implemented for now.
 	svcCfg := &services.ServiceConfig{
-		DB:                 db,
-		CM:                 cm,
-		AuthValidityWindow: cfg.AuthValidityWindow,
-		Nodes:              nodes,
-		Logger:             logger,
-		Clock:              clock,
+		DB:                  db,
+		CM:                  cm,
+		Nodes:               nodes,
+		WithdrawalAddresses: withdrawalAddresses,
+		Logger:              logger,
+		Clock:               clock,
 	}
 	svc := services.NewService(svcCfg)
 	if err := svc.Init(); err != nil {
@@ -148,7 +158,10 @@ func main() {
 
 	// Stop the background tasks
 	if err = updateNodes.Stop(); err != nil {
-		logger.Error("Error stopping background tasks", zap.Error(err))
+		logger.Error("Error stopping node background tasks", zap.Error(err))
+	}
+	if err = updateWithdrawalAddresses.Stop(); err != nil {
+		logger.Error("Error stopping withdrawal addresses background tasks", zap.Error(err))
 	}
 
 	logger.Info("Shutdown complete")

@@ -48,9 +48,12 @@ func (t *UpdateNodesTask) updateUsingRescueProxy() error {
 		t.logger.Warn("Failed to update node registry", zap.String("source", src), zap.Error(err))
 		return err
 	}
+	newList := make([]models.NodeID, 0, len(nodes))
 	for _, n := range nodes {
-		t.nodes.Add(common.BytesToAddress(n))
+		newList = append(newList, common.BytesToAddress(n))
 	}
+	t.nodes.Add(newList)
+
 	t.logger.Info("Node registry successfully updated", zap.String("source", src))
 
 	return nil
@@ -68,9 +71,12 @@ func (t *UpdateNodesTask) updateUsingRocketscan() error {
 		t.logger.Warn("Failed to update node registry", zap.String("source", src), zap.Error(err))
 		return err
 	}
+	newList := make([]models.NodeID, 0, len(nodes))
 	for _, n := range nodes {
-		t.nodes.Add(common.HexToAddress(n.Address))
+		newList = append(newList, common.HexToAddress(n.Address))
 	}
+	t.nodes.Add(newList)
+
 	t.logger.Info("Node registry successfully updated", zap.String("source", src))
 
 	return nil
