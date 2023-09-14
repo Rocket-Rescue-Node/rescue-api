@@ -59,12 +59,13 @@ func (a *AuthorizationError) Is(err error) bool {
 
 // ServiceConfig contains the configuration for a Service.
 type ServiceConfig struct {
-	DB                  *sql.DB
-	CM                  *creds.CredentialManager
-	Nodes               *models.NodeRegistry
-	WithdrawalAddresses *models.NodeRegistry
-	Logger              *zap.Logger
-	Clock               clockwork.Clock
+	DB                   *sql.DB
+	CM                   *creds.CredentialManager
+	Nodes                *models.NodeRegistry
+	WithdrawalAddresses  *models.NodeRegistry
+	Logger               *zap.Logger
+	Clock                clockwork.Clock
+	EnableSoloValidators bool
 }
 
 // Services contain business logic, are responsible for interacting with the database,
@@ -90,18 +91,21 @@ type Service struct {
 	logger *zap.Logger
 
 	clock clockwork.Clock
+
+	enableSoloValidators bool
 }
 
 func NewService(config *ServiceConfig) *Service {
 	re := regexp.MustCompile(credentialRequestPattern)
 	return &Service{
-		cm:                  config.CM,
-		db:                  config.DB,
-		nodes:               config.Nodes,
-		withdrawalAddresses: config.WithdrawalAddresses,
-		credRequestRegexp:   re,
-		logger:              config.Logger,
-		clock:               config.Clock,
+		cm:                   config.CM,
+		db:                   config.DB,
+		nodes:                config.Nodes,
+		withdrawalAddresses:  config.WithdrawalAddresses,
+		credRequestRegexp:    re,
+		logger:               config.Logger,
+		clock:                config.Clock,
+		enableSoloValidators: config.EnableSoloValidators,
 	}
 }
 

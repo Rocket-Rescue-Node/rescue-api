@@ -107,12 +107,13 @@ func main() {
 	// Services contain the business logic and are used by the API handlers.
 	// Only CreateCredential is implemented for now.
 	svcCfg := &services.ServiceConfig{
-		DB:                  db,
-		CM:                  cm,
-		Nodes:               nodes,
-		WithdrawalAddresses: withdrawalAddresses,
-		Logger:              logger,
-		Clock:               clock,
+		DB:                   db,
+		CM:                   cm,
+		Nodes:                nodes,
+		WithdrawalAddresses:  withdrawalAddresses,
+		Logger:               logger,
+		Clock:                clock,
+		EnableSoloValidators: cfg.EnableSoloValidators,
 	}
 	svc := services.NewService(svcCfg)
 	if err := svc.Init(); err != nil {

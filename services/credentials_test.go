@@ -56,12 +56,13 @@ func setupTestService(clock clockwork.Clock) (*Service, error) {
 	nodes := models.NewNodeRegistry()
 	withdrawalAddresses := models.NewNodeRegistry()
 	config := &ServiceConfig{
-		DB:                  db,
-		CM:                  cm,
-		Nodes:               nodes,
-		WithdrawalAddresses: withdrawalAddresses,
-		Logger:              logger,
-		Clock:               clock,
+		DB:                   db,
+		CM:                   cm,
+		Nodes:                nodes,
+		WithdrawalAddresses:  withdrawalAddresses,
+		Logger:               logger,
+		Clock:                clock,
+		EnableSoloValidators: true,
 	}
 	return NewService(config), nil
 }

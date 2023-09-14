@@ -160,6 +160,9 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 			return nil, &AuthorizationError{"node is not registered"}
 		}
 	case pb.OperatorType_OT_SOLO:
+		if !s.enableSoloValidators {
+			return nil, &AuthorizationError{"solo validators are currently not permitted"}
+		}
 		if !s.isWithdrawalAddress(nodeID) {
 			return nil, &AuthorizationError{"wallet is not a withdrawal address for any validator"}
 		}

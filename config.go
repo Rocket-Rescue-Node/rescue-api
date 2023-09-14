@@ -11,14 +11,15 @@ import (
 
 // Application configuration.
 type config struct {
-	ListenAddr         string
-	CredentialSecret   string
-	DBPath             string
-	RescueProxyAPIAddr string
-	RocketscanAPIURL   string
-	AllowedOrigins     []string
-	SecureGRPC         bool
-	Debug              bool
+	ListenAddr           string
+	CredentialSecret     string
+	DBPath               string
+	RescueProxyAPIAddr   string
+	RocketscanAPIURL     string
+	AllowedOrigins       []string
+	SecureGRPC           bool
+	Debug                bool
+	EnableSoloValidators bool
 }
 
 // Check that URL is valid.
@@ -48,6 +49,7 @@ func parseArguments() (config, error) {
 	allowedOrigins := flag.String("allowed-origins", "http://localhost:8080", "Comma-separated list of allowed CORS origins")
 	secureGRPC := flag.Bool("secure-grpc", true, "Whether to enforce gRPC over TLS")
 	debug := flag.Bool("debug", false, "Whether to enable verbose logging")
+	enableSoloValidators := flag.Bool("enable-solo-validators", true, "Whether or not to enable solo validator credentials")
 	flag.Parse()
 
 	if *credentialSecret == "" {
@@ -73,13 +75,14 @@ func parseArguments() (config, error) {
 	}
 
 	return config{
-		ListenAddr:         *addr,
-		CredentialSecret:   *credentialSecret,
-		DBPath:             *dbPath,
-		RescueProxyAPIAddr: *proxyAPIAddr,
-		RocketscanAPIURL:   *rocketscanAPIURL,
-		AllowedOrigins:     origins,
-		SecureGRPC:         *secureGRPC,
-		Debug:              *debug,
+		ListenAddr:           *addr,
+		CredentialSecret:     *credentialSecret,
+		DBPath:               *dbPath,
+		RescueProxyAPIAddr:   *proxyAPIAddr,
+		RocketscanAPIURL:     *rocketscanAPIURL,
+		AllowedOrigins:       origins,
+		SecureGRPC:           *secureGRPC,
+		Debug:                *debug,
+		EnableSoloValidators: *enableSoloValidators,
 	}, nil
 }
