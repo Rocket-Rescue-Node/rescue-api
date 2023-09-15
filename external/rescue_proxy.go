@@ -28,8 +28,10 @@ func (c *RescueProxyAPIClient) connect() error {
 	// Try to connect to the Rescue Proxy API using TLS.
 	// An empty TLS config will use the system's root CAs.
 	tc := credentials.NewTLS(&tls.Config{})
-	do := grpc.WithTransportCredentials(tc)
-	if c.conn, err = grpc.Dial(c.address, do); err == nil {
+	if c.conn, err = grpc.Dial(c.address,
+		grpc.WithTransportCredentials(tc),
+		grpc.WithBlock()); err == nil {
+
 		goto connected
 	}
 
@@ -37,8 +39,10 @@ func (c *RescueProxyAPIClient) connect() error {
 	if c.secure {
 		return err
 	}
-	do = grpc.WithTransportCredentials(insecure.NewCredentials())
-	if c.conn, err = grpc.Dial(c.address, do); err != nil {
+	if c.conn, err = grpc.Dial(c.address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock()); err != nil {
+
 		return err
 	}
 
