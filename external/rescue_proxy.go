@@ -25,28 +25,37 @@ func NewRescueProxyAPIClient(address string, secure bool) *RescueProxyAPIClient 
 func (c *RescueProxyAPIClient) connect() error {
 	var err error
 
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	// Try to connect to the Rescue Proxy API using TLS.
 	// An empty TLS config will use the system's root CAs.
 	tc := credentials.NewTLS(&tls.Config{})
-	if c.conn, err = grpc.Dial(c.address,
+	if c.conn, err = grpc.DialContext(ctx,
+		c.address,
 		grpc.WithTransportCredentials(tc),
 		grpc.WithBlock()); err == nil {
 
-		goto connected
+		c.client = proxy.NewApiClient(c.conn)
+		return nil
 	}
 
 	// If TLS fails, try falling back to insecure gRPC.
 	if c.secure {
 		return err
 	}
-	if c.conn, err = grpc.Dial(c.address,
+
+	ctx, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel2()
+
+	if c.conn, err = grpc.DialContext(ctx,
+		c.address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock()); err != nil {
 
 		return err
 	}
 
-connected:
 	c.client = proxy.NewApiClient(c.conn)
 	return nil
 }
