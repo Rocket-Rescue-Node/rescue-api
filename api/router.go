@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Rocket-Pool-Rescue-Node/rescue-api/services"
 	"github.com/gorilla/mux"
@@ -52,10 +53,13 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		return writeJSONError(w, err)
 	}
 
+	expires := time.Unix(cred.Credential.Timestamp, 0).Add(services.AuthValidityWindow(cred.Credential.OperatorType))
+
 	resp := CreateCredentialResponse{
 		Username:  cred.Base64URLEncodeUsername(),
 		Password:  password,
 		Timestamp: cred.Credential.Timestamp,
+		ExpiresAt: expires.Unix(),
 	}
 
 	return writeJSONResponse(w, http.StatusCreated, resp, "")
