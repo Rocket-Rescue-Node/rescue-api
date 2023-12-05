@@ -76,7 +76,7 @@ func credsQuota(ot credentials.OperatorType) int64 {
 	return int64(quota.count)
 }
 
-func authValidityWindow(ot credentials.OperatorType) time.Duration {
+func AuthValidityWindow(ot credentials.OperatorType) time.Duration {
 	quota, ok := quotas[ot]
 	if !ok {
 		// Default to 10 days
@@ -199,7 +199,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 	//  * It expires in more than credsMinValidityWindow seconds, or
 	//  * No more credentials can be issued in the current window.
 	created := time.Unix(lastCredTimestamp, 0)
-	expires := created.Add(authValidityWindow(ot))
+	expires := created.Add(AuthValidityWindow(ot))
 	if expires.After(now) && (expires.Sub(now) > credsMinValidityWindow || credsCount == credsQuota(ot)) {
 		return s.cm.Create(created, nodeID.Bytes(), ot)
 	}

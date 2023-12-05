@@ -40,6 +40,7 @@ type CreateCredentialResponse struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	Timestamp int64  `json:"timestamp"`
+	ExpiresAt int64  `json:"expiresAt"`
 }
 
 func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {

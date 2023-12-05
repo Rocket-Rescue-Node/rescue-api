@@ -118,7 +118,7 @@ func TestCreateCredentialLifecycle(t *testing.T) {
 		t.Fatalf("Could not create credential: %v", err)
 	}
 	// Advance the clock just before credsMinValidityWindow expires.
-	clock.Advance(authValidityWindow(pb.OperatorType_OT_ROCKETPOOL) - credsMinValidityWindow - 1*time.Second)
+	clock.Advance(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL) - credsMinValidityWindow - 1*time.Second)
 	// Make sure that the node registry is considered up-to-date.
 	svc.nodes.LastUpdated = svc.clock.Now()
 	// Check that the credential c0 is reused, since it is still valid and
@@ -151,7 +151,7 @@ func TestCreateCredentialLifecycle(t *testing.T) {
 	// created each time.
 	prevCred := c1
 	for i := 2; i < int(quotas[pb.OperatorType_OT_ROCKETPOOL].count); i++ {
-		clock.Advance(authValidityWindow(pb.OperatorType_OT_ROCKETPOOL))
+		clock.Advance(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL))
 		svc.nodes.LastUpdated = svc.clock.Now()
 		cred, err := createValidCredential(svc, node)
 		if err != nil {
@@ -167,7 +167,7 @@ func TestCreateCredentialLifecycle(t *testing.T) {
 	// Advance the clock just before the credential expires.
 	// This should cause the credential to be reused, even though it is
 	// older than minValidityWindow, because we have exhausted credsQuota.
-	clock.Advance(authValidityWindow(pb.OperatorType_OT_ROCKETPOOL) - 1*time.Second)
+	clock.Advance(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL) - 1*time.Second)
 	svc.nodes.LastUpdated = svc.clock.Now()
 	cred, err := createValidCredential(svc, node)
 	if err != nil {
