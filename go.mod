@@ -11,7 +11,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/rs/cors v1.10.0
 	go.uber.org/zap v1.25.0
-	google.golang.org/grpc v1.58.0
+	google.golang.org/grpc v1.58.3
 )
 
 require (
