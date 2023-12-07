@@ -12,12 +12,12 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Rocket-Pool-Rescue-Node/credentials"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/api"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/database"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/services"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/tasks"
+	"github.com/Rocket-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/rescue-api/api"
+	"github.com/Rocket-Rescue-Node/rescue-api/database"
+	"github.com/Rocket-Rescue-Node/rescue-api/models"
+	"github.com/Rocket-Rescue-Node/rescue-api/services"
+	"github.com/Rocket-Rescue-Node/rescue-api/tasks"
 	"github.com/jonboulle/clockwork"
 
 	"go.uber.org/zap"

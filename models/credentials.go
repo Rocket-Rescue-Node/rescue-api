@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/Rocket-Pool-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/credentials"
 )
 
 type AuthenticatedCredential = credentials.AuthenticatedCredential

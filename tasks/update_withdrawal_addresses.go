@@ -3,8 +3,8 @@ package tasks
 import (
 	"time"
 
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/external"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
+	"github.com/Rocket-Rescue-Node/rescue-api/external"
+	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	"github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )

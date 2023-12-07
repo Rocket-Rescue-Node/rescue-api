@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Rocket-Pool-Rescue-Node/credentials"
-	"github.com/Rocket-Pool-Rescue-Node/credentials/pb"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/services"
+	"github.com/Rocket-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/credentials/pb"
+	"github.com/Rocket-Rescue-Node/rescue-api/services"
 )
 
 type response struct {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/util"
+	"github.com/Rocket-Rescue-Node/rescue-api/util"
 )
 
 const (

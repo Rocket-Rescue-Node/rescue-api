@@ -1,10 +1,10 @@
-module github.com/Rocket-Pool-Rescue-Node/rescue-api
+module github.com/Rocket-Rescue-Node/rescue-api
 
 go 1.21
 
 require (
-	github.com/Rocket-Pool-Rescue-Node/credentials v0.0.0-20230909140515-dbe2112cbe11
-	github.com/Rocket-Pool-Rescue-Node/rescue-proxy v0.3.7
+	github.com/Rocket-Rescue-Node/credentials v0.0.0-20231207141737-f74aa860bd92
+	github.com/Rocket-Rescue-Node/rescue-proxy v1.0.2
 	github.com/ethereum/go-ethereum v1.13.5
 	github.com/gorilla/mux v1.8.1
 	github.com/jonboulle/clockwork v0.4.0

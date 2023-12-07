@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/services"
+	"github.com/Rocket-Rescue-Node/rescue-api/services"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"go.uber.org/zap"

@@ -1,6 +1,6 @@
 package authorization
 
-import "github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
+import "github.com/Rocket-Rescue-Node/rescue-api/models"
 
 type Action int
 

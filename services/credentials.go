@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Rocket-Pool-Rescue-Node/credentials"
-	"github.com/Rocket-Pool-Rescue-Node/credentials/pb"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
-	authz "github.com/Rocket-Pool-Rescue-Node/rescue-api/models/authorization"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/util"
+	"github.com/Rocket-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/credentials/pb"
+	"github.com/Rocket-Rescue-Node/rescue-api/models"
+	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
+	"github.com/Rocket-Rescue-Node/rescue-api/util"
 
 	"github.com/mattn/go-sqlite3"
 

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rocket-Pool-Rescue-Node/credentials"
-	"github.com/Rocket-Pool-Rescue-Node/credentials/pb"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/database"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/util"
+	"github.com/Rocket-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/credentials/pb"
+	"github.com/Rocket-Rescue-Node/rescue-api/database"
+	"github.com/Rocket-Rescue-Node/rescue-api/models"
+	"github.com/Rocket-Rescue-Node/rescue-api/util"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
 )

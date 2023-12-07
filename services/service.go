@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"time"
 
-	creds "github.com/Rocket-Pool-Rescue-Node/credentials"
-	"github.com/Rocket-Pool-Rescue-Node/rescue-api/models"
-	authz "github.com/Rocket-Pool-Rescue-Node/rescue-api/models/authorization"
+	creds "github.com/Rocket-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/rescue-api/models"
+	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
 )

@@ -1,4 +1,4 @@
-[![golangci-lint](https://github.com/Rocket-Pool-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/Rocket-Pool-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml)
+[![golangci-lint](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml)
 
 # Rescue-API
 
@@ -45,7 +45,7 @@ Usage of ./rescue-api:
 ```
 
   * `-hmac-secret` must match the one used with the
-  [Credentials](https://github.com/Rocket-Pool-Rescue-Node/credentials) library
+  [Credentials](https://github.com/Rocket-Rescue-Node/credentials) library
   that generated the username, password
 
 ## Docker
