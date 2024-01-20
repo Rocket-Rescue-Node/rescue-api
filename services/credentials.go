@@ -93,6 +93,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 	var err error
 
 	var try int
+	s.m.Counter("create_credential_with_retry").Inc()
 	for try = range dbTryDelayMs {
 		// Try to create the credential.
 		if cred, err = s.CreateCredential(msg, sig, ot); err == nil {
@@ -103,6 +104,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 		var sqliteErr sqlite3.Error
 		// If the error is not a recoverable SQLite error, we can't recover.
 		if !errors.As(err, &sqliteErr) {
+			s.m.Counter("create_credential_unrecoverable_error").Inc()
 			break
 		}
 		if sqliteErr.Code != sqlite3.ErrLocked &&
@@ -139,6 +141,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 	if err != nil {
 		msg := "failed to recover nodeID from signature"
 		s.logger.Warn(msg, zap.Error(err))
+		s.m.Counter("create_credential_failed_auth").Inc()
 		return nil, &AuthenticationError{msg}
 	}
 	s.logger.Info("Recovered nodeID from signature", zap.String("nodeID", nodeID.Hex()))
@@ -146,10 +149,12 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 	// Check if the request is fresh.
 	tsSecs, err := s.getTimestampFromRequest(string(msg))
 	if err != nil {
+		s.m.Counter("create_credential_invalid_timestamp").Inc()
 		return nil, &ValidationError{"invalid timestamp"}
 	}
 	ts := time.Unix(tsSecs, 0)
 	if time.Since(ts) > credsRequestMaxAge {
+		s.m.Counter("create_credential_timestamp_too_old").Inc()
 		return nil, &AuthenticationError{"timestamp is too old"}
 	}
 
@@ -157,19 +162,23 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 	switch ot {
 	case pb.OperatorType_OT_ROCKETPOOL:
 		if !s.isNodeRegistered(nodeID) {
+			s.m.Counter("create_credential_node_not_registered").Inc()
 			return nil, &AuthorizationError{"node is not registered"}
 		}
 	case pb.OperatorType_OT_SOLO:
 		if !s.enableSoloValidators {
+			s.m.Counter("create_credential_solo_traffic_shedding").Inc()
 			return nil, &AuthorizationError{"solo validators are currently not permitted"}
 		}
 		if !s.isWithdrawalAddress(nodeID) {
+			s.m.Counter("create_credential_solo_not_withdrawal_address").Inc()
 			return nil, &AuthorizationError{"wallet is not a withdrawal address for any validator"}
 		}
 	}
 
 	// Make sure that the node is not banned from using the service.
 	if !s.isNodeAuthorized(nodeID, authz.CredentialService) {
+		s.m.Counter("create_credential_user_banned").Inc()
 		return nil, &AuthorizationError{"node is not authorized"}
 	}
 
@@ -201,6 +210,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 	created := time.Unix(lastCredTimestamp, 0)
 	expires := created.Add(AuthValidityWindow(ot))
 	if expires.After(now) && (expires.Sub(now) > credsMinValidityWindow || credsCount == credsQuota(ot)) {
+		s.m.Counter("create_credential_recycled").Inc()
 		return s.cm.Create(created, nodeID.Bytes(), ot)
 	}
 
@@ -213,6 +223,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 			zap.Int64("currentWindowStart", currentWindowStart),
 			zap.String("operatorType", ot.String()),
 		)
+		s.m.Counter("create_credential_quota_exceeded").Inc()
 		return nil, &AuthorizationError{"node has requested too many credentials"}
 	}
 
@@ -242,6 +253,7 @@ func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.Operat
 		zap.Int64("timestamp", cred.Credential.Timestamp),
 	)
 
+	s.m.Counter("create_credential_created").Inc()
 	return cred, nil
 }
 

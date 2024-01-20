@@ -14,12 +14,13 @@ import (
 	"github.com/Rocket-Rescue-Node/rescue-api/database"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	"github.com/Rocket-Rescue-Node/rescue-api/util"
+	"github.com/Rocket-Rescue-Node/rescue-proxy/metrics"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
 )
 
 // Create a new service using an in-memory database.
-func setupTestService(clock clockwork.Clock) (*Service, error) {
+func setupTestService(t *testing.T, clock clockwork.Clock) (*Service, error) {
 	var err error
 
 	// Workaround for "no such table" errors.
@@ -64,6 +65,14 @@ func setupTestService(clock clockwork.Clock) (*Service, error) {
 		Clock:                clock,
 		EnableSoloValidators: true,
 	}
+
+	_, err = metrics.Init(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		metrics.Deinit()
+	})
 	return NewService(config), nil
 }
 
@@ -97,7 +106,7 @@ func TestCreateCredentialLifecycle(t *testing.T) {
 	// Create a fake clock and set the validity window.
 	clock := clockwork.NewFakeClockAt(time.Now())
 	// Create and initialize services.
-	svc, err := setupTestService(clock)
+	svc, err := setupTestService(t, clock)
 	if err != nil {
 		t.Fatalf("Could not create service: %v", err)
 	}
@@ -240,7 +249,7 @@ func TestCreateCredentialRequests(t *testing.T) {
 	// Create a fake clock and set the validity window.
 	clock := clockwork.NewFakeClockAt(time.Now())
 	// Create and initialize services.
-	svc, err := setupTestService(clock)
+	svc, err := setupTestService(t, clock)
 	if err != nil {
 		t.Fatalf("Could not create service: %v", err)
 	}
@@ -340,7 +349,7 @@ func TestCreateCredentialConcurrent(t *testing.T) {
 	// Create a fake clock and set the validity window.
 	clock := clockwork.NewRealClock()
 	// Create and initialize services.
-	svc, err := setupTestService(clock)
+	svc, err := setupTestService(t, clock)
 	if err != nil {
 		t.Fatalf("Could not create service: %v", err)
 	}
