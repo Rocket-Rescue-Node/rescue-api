@@ -12,6 +12,7 @@ import (
 // Application configuration.
 type config struct {
 	ListenAddr           string
+	MetricsAddr          string
 	CredentialSecret     string
 	DBPath               string
 	RescueProxyAPIAddr   string
@@ -42,6 +43,7 @@ func checkURL(data string, allowedSchemes ...string) error {
 // Returns a config struct with the parsed arguments.
 func parseArguments() (config, error) {
 	addr := flag.String("addr", "0.0.0.0:8080", "Address on which to listen to HTTP requests")
+	metricsAddr := flag.String("metrics-addr", "0.0.0.0:9000", "Address on which to listen for /metrics requests")
 	credentialSecret := flag.String("hmac-secret", "test-secret", "The secret to use for HMAC")
 	dbPath := flag.String("db-path", "db.sqlite3", "sqlite3 database path")
 	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "", "Address for the Rescue Proxy gRPC API")
@@ -76,6 +78,7 @@ func parseArguments() (config, error) {
 
 	return config{
 		ListenAddr:           *addr,
+		MetricsAddr:          *metricsAddr,
 		CredentialSecret:     *credentialSecret,
 		DBPath:               *dbPath,
 		RescueProxyAPIAddr:   *proxyAPIAddr,

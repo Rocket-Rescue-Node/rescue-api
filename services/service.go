@@ -9,6 +9,7 @@ import (
 	creds "github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
+	"github.com/Rocket-Rescue-Node/rescue-proxy/metrics"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
 )
@@ -88,6 +89,7 @@ type Service struct {
 	addCredEventStmt     *sql.Stmt
 	isNodeAuthorizedStmt *sql.Stmt
 
+	m      *metrics.MetricsRegistry
 	logger *zap.Logger
 
 	clock clockwork.Clock
@@ -110,6 +112,7 @@ func NewService(config *ServiceConfig) *Service {
 }
 
 func (s *Service) Init() error {
+	s.m = metrics.NewMetricsRegistry("service")
 	if err := s.createTables(); err != nil {
 		return err
 	}
@@ -211,6 +214,7 @@ func (s *Service) isNodeRegistered(nodeID *models.NodeID) bool {
 	if s.clock.Now().After(s.nodes.LastUpdated.Add(nodeRegistryMaxAge)) {
 		s.logger.Error("Node registry is too old, refusing access to node",
 			zap.String("nodeID", nodeID.Hex()))
+		s.m.Counter("old_node_registry").Inc()
 		return false
 	}
 	return s.nodes.Has(*nodeID)
@@ -222,6 +226,7 @@ func (s *Service) isWithdrawalAddress(nodeID *models.NodeID) bool {
 	if s.clock.Now().After(s.withdrawalAddresses.LastUpdated.Add(nodeRegistryMaxAge)) {
 		s.logger.Error("Withdrawal Address registry is too old, refusing access to user",
 			zap.String("withdrawal_address", nodeID.Hex()))
+		s.m.Counter("old_withdrawal_address_registry").Inc()
 		return false
 	}
 	return s.withdrawalAddresses.Has(*nodeID)

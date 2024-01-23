@@ -18,6 +18,7 @@ import (
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
 	"github.com/Rocket-Rescue-Node/rescue-api/tasks"
+	"github.com/Rocket-Rescue-Node/rescue-proxy/metrics"
 	"github.com/jonboulle/clockwork"
 
 	"go.uber.org/zap"
@@ -60,6 +61,13 @@ func main() {
 	// Parse command line arguments.
 	if cfg, err = parseArguments(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing command-line arguments: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Initialize the metrics subsystem.
+	metricsHandler, err := metrics.Init("rescue_api")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing metrics handler: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -123,7 +131,6 @@ func main() {
 	// Create the API router.
 	path := "/rescue/v1/"
 	router := api.NewAPIRouter(path, svc, cfg.AllowedOrigins, logger)
-	http.Handle(path, router)
 
 	// Listen on the provided address. This listener will be used by the HTTP server.
 	listener, err := net.Listen("tcp", cfg.ListenAddr)
@@ -132,14 +139,33 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Listen on the metrics address.
+	metricsListener, err := net.Listen("tcp", cfg.MetricsAddr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to listen on provided metrics address %s\n%v\n", cfg.MetricsAddr, err)
+		os.Exit(1)
+	}
+
 	// Spin up the HTTP server on a different goroutine, since it blocks.
-	server := http.Server{}
+	server := http.Server{
+		Handler: router,
+	}
+	metricsServer := http.Server{
+		Handler: metricsHandler,
+	}
 	var serverWaitGroup sync.WaitGroup
-	serverWaitGroup.Add(1)
+	serverWaitGroup.Add(2)
 	go func() {
 		logger.Info("Starting HTTP server", zap.String("url", cfg.ListenAddr))
 		if err := server.Serve(listener); err != nil {
 			logger.Error("HTTP server stopped", zap.Error(err))
+		}
+		serverWaitGroup.Done()
+	}()
+	go func() {
+		logger.Info("Starting metrics HTTP server", zap.String("url", cfg.MetricsAddr))
+		if err := metricsServer.Serve(metricsListener); err != nil {
+			logger.Error("metrics HTTP server stopped", zap.Error(err))
 		}
 		serverWaitGroup.Done()
 	}()
@@ -150,6 +176,8 @@ func main() {
 	logger.Info("Received termination signal, shutting down...")
 	_ = server.Shutdown(context.Background())
 	listener.Close()
+	_ = metricsServer.Shutdown(context.Background())
+	metricsListener.Close()
 
 	// Wait for the listener/server to exit
 	serverWaitGroup.Wait()
@@ -165,6 +193,7 @@ func main() {
 		logger.Error("Error stopping withdrawal addresses background tasks", zap.Error(err))
 	}
 
+	metrics.Deinit()
 	logger.Info("Shutdown complete")
 
 	_ = logger.Sync()
