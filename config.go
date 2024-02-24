@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 type config struct {
 	ListenAddr           string
 	MetricsAddr          string
-	CredentialSecret     string
+	CredentialSecret     []byte
 	DBPath               string
 	RescueProxyAPIAddr   string
 	RocketscanAPIURL     string
@@ -44,7 +45,11 @@ func checkURL(data string, allowedSchemes ...string) error {
 func parseArguments() (config, error) {
 	addr := flag.String("addr", "0.0.0.0:8080", "Address on which to listen to HTTP requests")
 	metricsAddr := flag.String("metrics-addr", "0.0.0.0:9000", "Address on which to listen for /metrics requests")
-	credentialSecret := flag.String("hmac-secret", "test-secret", "The secret to use for HMAC")
+	credentialSecret := flag.String("hmac-secret", "",
+		`The secret to use for HMAC.
+Value must be at least 32 bytes of entropy, base64-encoded.
+Use 'dd if=/dev/urandom bs=4 count=8 | base64' if you need to generate a new secret.`,
+	)
 	dbPath := flag.String("db-path", "db.sqlite3", "sqlite3 database path")
 	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "", "Address for the Rescue Proxy gRPC API")
 	rocketscanAPIURL := flag.String("rocketscan-api-url", "", "URL for the Rocketscan REST API")
@@ -55,7 +60,14 @@ func parseArguments() (config, error) {
 	flag.Parse()
 
 	if *credentialSecret == "" {
-		return config{}, errors.New("invalid -hmac-secret argument")
+		return config{}, errors.New("missing -hmac-secret, at least one must be provided")
+	}
+	secret, err := base64.StdEncoding.DecodeString(*credentialSecret)
+	if err != nil {
+		return config{}, errors.New("invalid -hmac-secret, please see the usage output for how to create a valid secret")
+	}
+	if len(secret) < 32 {
+		return config{}, errors.New("base64 decoded secret with length %d is shorter than the required 32 bytes")
 	}
 
 	if _, _, err := net.SplitHostPort(*proxyAPIAddr); err != nil {
@@ -79,7 +91,7 @@ func parseArguments() (config, error) {
 	return config{
 		ListenAddr:           *addr,
 		MetricsAddr:          *metricsAddr,
-		CredentialSecret:     *credentialSecret,
+		CredentialSecret:     secret,
 		DBPath:               *dbPath,
 		RescueProxyAPIAddr:   *proxyAPIAddr,
 		RocketscanAPIURL:     *rocketscanAPIURL,
