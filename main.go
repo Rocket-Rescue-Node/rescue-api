@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"net"
@@ -86,7 +85,8 @@ func main() {
 	defer db.Close()
 
 	// Initialize the Credential Manager. This is used to create and verify credentials.
-	cm := credentials.NewCredentialManager(sha256.New, []byte(cfg.CredentialSecret))
+	cm := credentials.NewCredentialManager(cfg.CredentialSecret)
+	logger.Debug("Initialized credential manager", zap.String("primary id", cm.ID().String()))
 
 	// Background task to update the list of current Rocket Pool nodes.
 	nodes := models.NewNodeRegistry()

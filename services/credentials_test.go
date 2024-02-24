@@ -2,7 +2,6 @@ package services
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"sync"
@@ -46,7 +45,7 @@ func setupTestService(t *testing.T, clock clockwork.Clock) (*Service, error) {
 	db.SetConnMaxLifetime(0)
 
 	// Credentials.
-	cm := credentials.NewCredentialManager(sha256.New, []byte("test"))
+	cm := credentials.NewCredentialManager([]byte("test"))
 
 	// Logger
 	logger, err := zap.NewDevelopmentConfig().Build()
@@ -232,7 +231,7 @@ func createValidCredential(svc *Service, node *util.Wallet) (*credentials.Authen
 		return nil, fmt.Errorf("Credential should not be nil")
 	}
 	// Check that the credential has a valid HMAC.
-	if err = svc.cm.Verify(cred); err != nil {
+	if _, err = svc.cm.Verify(cred); err != nil {
 		return nil, fmt.Errorf("Credential HMAC is invalid: %v", err)
 	}
 	// Make sure the node ID matches the node address.
