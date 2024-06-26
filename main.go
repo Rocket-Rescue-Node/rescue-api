@@ -50,6 +50,7 @@ func initLogger(debug bool) error {
 	}
 
 	logger, err = cfg.Build()
+	logger.Info("logger initialized", zap.Bool("debug", debug))
 	return err
 }
 
