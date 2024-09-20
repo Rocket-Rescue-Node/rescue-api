@@ -54,7 +54,6 @@ type OperatorInfoRequest struct {
 }
 
 type OperatorInfoResponse struct {
-	// Sno: Review values to return
 	Timestamp        int64                    `json:"timestamp"`
 	CredentialEvents []models.CredentialEvent `json:"credentialEvents"`
 }

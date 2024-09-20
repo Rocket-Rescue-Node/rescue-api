@@ -96,10 +96,6 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 		zap.Int("operator_type", int(operatorInfo.OperatorType)),
 		zap.Int64("timestamp", operatorInfo.Timestamp))
 
-	// Sno: include --
-	// - How many times rescue node was used
-	// - When next usage is allowed
-	// - credential_event records for a given (node, operator_type) key over the last window duration
 	resp := OperatorInfoResponse{
 		Timestamp:        operatorInfo.Timestamp,
 		CredentialEvents: operatorInfo.CredentialEvents,
