@@ -53,9 +53,9 @@ type OperatorInfoRequest struct {
 }
 
 type OperatorInfoResponse struct {
-	// Sno: Example values, need to replace
-	Timestamp int64 `json:"timestamp"`
-	ExpiresAt int64 `json:"expiresAt"`
+	// Sno: Review values to return
+	Timestamp   int64 `json:"timestamp"`
+	WindowCount int64 `json:"windowCount"`
 }
 
 func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {

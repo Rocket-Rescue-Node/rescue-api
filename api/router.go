@@ -80,38 +80,29 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 		zap.Int("operator_type", int(req.operatorType)),
 	)
 
-	// Sno: temp replacing 'sig' with _ . put this back later.
-	_, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
+	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
 	if err != nil {
 		msg := "invalid signature"
 		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
 	}
 
-	// Sno: Info logic goes here
-	// cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig, req.operatorType)
-	// if err != nil {
-	// 	return writeJSONError(w, err)
-	// }
+	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), sig, req.operatorType)
+	if err != nil {
+		return writeJSONError(w, err)
+	}
 
-	// ar.logger.Info("Created credential",
-	// 	zap.String("nodeID", hex.EncodeToString(cred.Credential.NodeId)),
-	// 	zap.Int("operator_type", int(cred.Credential.OperatorType)),
-	// 	zap.Int64("timestamp", cred.Credential.Timestamp))
+	ar.logger.Info("Retrieved operator info",
+		zap.String("nodeID", hex.EncodeToString(operatorInfo.NodeID.Bytes())),
+		zap.Int("operator_type", int(operatorInfo.OperatorType)),
+		zap.Int64("timestamp", operatorInfo.Timestamp))
 
-	// password, err := cred.Base64URLEncodePassword()
-	// if err != nil {
-	// 	return writeJSONError(w, err)
-	// }
-
-	// expires := time.Unix(cred.Credential.Timestamp, 0).Add(services.AuthValidityWindow(cred.Credential.OperatorType))
-
-	// Sno: Make sure this includes:
+	// Sno: include --
 	// - How many times rescue node was used
-	// - When access will be restored (next usage is allowed?)
-	// - up-to-4 credential_event records for a given (node, operator_type) key over the last window duration (the last 4 usages??)
+	// - When next usage is allowed
+	// - credential_event records for a given (node, operator_type) key over the last window duration
 	resp := OperatorInfoResponse{
-		Timestamp: 222,
-		ExpiresAt: 222,
+		Timestamp:   operatorInfo.Timestamp,
+		WindowCount: int64(len(operatorInfo.CredentialEvents)),
 	}
 
 	return writeJSONResponse(w, http.StatusCreated, resp, "")

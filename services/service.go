@@ -86,6 +86,7 @@ type Service struct {
 	// Database
 	db                   *sql.DB
 	getCredEventsStmt    *sql.Stmt
+	getAllCredEventsStmt *sql.Stmt
 	addCredEventStmt     *sql.Stmt
 	isNodeAuthorizedStmt *sql.Stmt
 
@@ -187,6 +188,12 @@ func (s *Service) prepareStatements() error {
 	if s.getCredEventsStmt, err = s.db.Prepare(`
 		SELECT COALESCE(MAX(timestamp), 0), COUNT(*) FROM credential_events
 		WHERE node_id = ? AND timestamp > ? AND type = ? AND operator_type = ?;
+	`); err != nil {
+		return err
+	}
+
+	if s.getAllCredEventsStmt, err = s.db.Prepare(`
+		SELECT * FROM credential_events WHERE node_id = ? AND timestamp >= ? AND timestamp <= ? AND type = ? AND operator_type = ?;
 	`); err != nil {
 		return err
 	}
