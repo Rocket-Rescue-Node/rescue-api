@@ -43,6 +43,21 @@ type CreateCredentialResponse struct {
 	ExpiresAt int64  `json:"expiresAt"`
 }
 
+type OperatorInfoRequest struct {
+	Address string `json:"address"`
+	Msg     string `json:"msg"`
+	Sig     string `json:"sig"`
+	Version string `json:"version"`
+
+	operatorType credentials.OperatorType `json:"-"`
+}
+
+type OperatorInfoResponse struct {
+	// Sno: Example values, need to replace
+	Timestamp int64 `json:"timestamp"`
+	ExpiresAt int64 `json:"expiresAt"`
+}
+
 func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {
 	var err error
 

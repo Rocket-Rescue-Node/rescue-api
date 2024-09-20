@@ -65,6 +65,58 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 	return writeJSONResponse(w, http.StatusCreated, resp, "")
 }
 
+func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) error {
+	// Try to decode the request body.
+	var req OperatorInfoRequest
+	if err := readJSONRequest(w, r, &req); err != nil {
+		return writeJSONError(w, err)
+	}
+
+	ar.logger.Info("Got operator info request",
+		zap.String("address", req.Address),
+		zap.String("msg", req.Msg),
+		zap.String("sig", req.Sig),
+		zap.String("version", req.Version),
+		zap.Int("operator_type", int(req.operatorType)),
+	)
+
+	// Sno: temp replacing 'sig' with _ . put this back later.
+	_, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
+	if err != nil {
+		msg := "invalid signature"
+		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
+	}
+
+	// Sno: Info logic goes here
+	// cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig, req.operatorType)
+	// if err != nil {
+	// 	return writeJSONError(w, err)
+	// }
+
+	// ar.logger.Info("Created credential",
+	// 	zap.String("nodeID", hex.EncodeToString(cred.Credential.NodeId)),
+	// 	zap.Int("operator_type", int(cred.Credential.OperatorType)),
+	// 	zap.Int64("timestamp", cred.Credential.Timestamp))
+
+	// password, err := cred.Base64URLEncodePassword()
+	// if err != nil {
+	// 	return writeJSONError(w, err)
+	// }
+
+	// expires := time.Unix(cred.Credential.Timestamp, 0).Add(services.AuthValidityWindow(cred.Credential.OperatorType))
+
+	// Sno: Make sure this includes:
+	// - How many times rescue node was used
+	// - When access will be restored (next usage is allowed?)
+	// - up-to-4 credential_event records for a given (node, operator_type) key over the last window duration (the last 4 usages??)
+	resp := OperatorInfoResponse{
+		Timestamp: 222,
+		ExpiresAt: 222,
+	}
+
+	return writeJSONResponse(w, http.StatusCreated, resp, "")
+}
+
 // Wrapper to log unhandled errors.
 // Note that this wrapper is only for last resort errors. For example, caused by
 // error handling functions not being able to write a response to the client.
@@ -91,6 +143,8 @@ func NewAPIRouter(path string, svc *services.Service, origins []string, logger *
 	allowedMethods := []string{"GET", "POST", "OPTIONS"}
 	sr.HandleFunc("/credentials", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
 	sr.HandleFunc("/credentials/", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
+	sr.HandleFunc("/info", ah.wrapHandler(ah.GetOperatorInfo)).Methods(allowedMethods...)
+	sr.HandleFunc("/info/", ah.wrapHandler(ah.GetOperatorInfo)).Methods(allowedMethods...)
 
 	// CORS support.
 	ch := cors.New(cors.Options{
