@@ -108,7 +108,6 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 	gacs := tx.Stmt(s.getAllCredEventsStmt)
 	defer gacs.Close()
 	rows, err := gacs.Query(nodeID.Bytes(), currentWindowStart, now, models.CredentialIssued, ot)
-	// Sno: Use not-shite error handling plz
 	if err != nil {
 		return nil, err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
+	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
 )
 
@@ -54,8 +55,8 @@ type OperatorInfoRequest struct {
 
 type OperatorInfoResponse struct {
 	// Sno: Review values to return
-	Timestamp   int64 `json:"timestamp"`
-	WindowCount int64 `json:"windowCount"`
+	Timestamp        int64                    `json:"timestamp"`
+	CredentialEvents []models.CredentialEvent `json:"credentialEvents"`
 }
 
 func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {

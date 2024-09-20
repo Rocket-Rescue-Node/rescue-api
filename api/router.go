@@ -101,8 +101,8 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 	// - When next usage is allowed
 	// - credential_event records for a given (node, operator_type) key over the last window duration
 	resp := OperatorInfoResponse{
-		Timestamp:   operatorInfo.Timestamp,
-		WindowCount: int64(len(operatorInfo.CredentialEvents)),
+		Timestamp:        operatorInfo.Timestamp,
+		CredentialEvents: operatorInfo.CredentialEvents,
 	}
 
 	return writeJSONResponse(w, http.StatusCreated, resp, "")
