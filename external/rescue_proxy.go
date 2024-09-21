@@ -6,6 +6,7 @@ import (
 	"time"
 
 	proxy "github.com/Rocket-Rescue-Node/rescue-proxy/pb"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -14,12 +15,18 @@ import (
 type RescueProxyAPIClient struct {
 	address string
 	secure  bool
-	conn    *grpc.ClientConn
-	client  proxy.ApiClient
+	logger  *zap.Logger
+
+	conn   *grpc.ClientConn
+	client proxy.ApiClient
 }
 
-func NewRescueProxyAPIClient(address string, secure bool) *RescueProxyAPIClient {
-	return &RescueProxyAPIClient{address: address, secure: secure}
+func NewRescueProxyAPIClient(logger *zap.Logger, address string, secure bool) *RescueProxyAPIClient {
+	return &RescueProxyAPIClient{
+		address: address,
+		secure:  secure,
+		logger:  logger,
+	}
 }
 
 func (c *RescueProxyAPIClient) connect() error {
@@ -37,13 +44,17 @@ func (c *RescueProxyAPIClient) connect() error {
 		grpc.WithBlock()); err == nil {
 
 		c.client = proxy.NewApiClient(c.conn)
+		c.logger.Debug("connected to rescue-proxy with TLS", zap.String("address", c.address))
 		return nil
 	}
 
 	// If TLS fails, try falling back to insecure gRPC.
 	if c.secure {
+		c.logger.Debug("not attempting to connect to rescue-proxy without TLS, since insecure grpc is disallowed", zap.String("address", c.address))
 		return err
 	}
+
+	c.logger.Debug("attempting to connect to rescue-proxy without TLS, since insecure grpc is allowed", zap.String("address", c.address))
 
 	ctx, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel2()
@@ -56,17 +67,29 @@ func (c *RescueProxyAPIClient) connect() error {
 		return err
 	}
 
+	c.logger.Debug("connected to rescue-proxy without TLS", zap.String("address", c.address))
+
 	c.client = proxy.NewApiClient(c.conn)
+	return nil
+}
+
+func (c *RescueProxyAPIClient) ensureConnection() error {
+	if c.conn == nil || c.client == nil {
+		c.logger.Debug("not yet connected - connecting", zap.String("address", c.address))
+		if err := c.connect(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (c *RescueProxyAPIClient) GetRocketPoolNodes() ([][]byte, error) {
 	// Connect if not yet connected.
-	if c.conn == nil || c.client == nil {
-		if err := c.connect(); err != nil {
-			return nil, err
-		}
+	if err := c.ensureConnection(); err != nil {
+		return nil, err
 	}
+	c.logger.Debug("requesting rp nodes")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	r, err := c.client.GetRocketPoolNodes(ctx, &proxy.RocketPoolNodesRequest{})
@@ -78,11 +101,10 @@ func (c *RescueProxyAPIClient) GetRocketPoolNodes() ([][]byte, error) {
 
 func (c *RescueProxyAPIClient) GetWithdrawalAddresses() ([][]byte, error) {
 	// Connect if not yet connected.
-	if c.conn == nil || c.client == nil {
-		if err := c.connect(); err != nil {
-			return nil, err
-		}
+	if err := c.ensureConnection(); err != nil {
+		return nil, err
 	}
+	c.logger.Debug("requesting solo validator withdrawal addresses")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	r, err := c.client.GetSoloValidators(ctx, &proxy.SoloValidatorsRequest{})

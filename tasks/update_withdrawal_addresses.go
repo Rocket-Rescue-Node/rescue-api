@@ -37,7 +37,7 @@ func NewUpdateWithdrawalAddressesTask(
 func (t *UpdateWithdrawalAddressesTask) updateUsingRescueProxy() error {
 	t.logger.Info("Updating Withdrawal Address registry...")
 
-	rescueProxyAPI := external.NewRescueProxyAPIClient(t.rescueProxyAddr, t.secureGRPC)
+	rescueProxyAPI := external.NewRescueProxyAPIClient(t.logger, t.rescueProxyAddr, t.secureGRPC)
 	defer rescueProxyAPI.Close()
 	addresses, err := rescueProxyAPI.GetWithdrawalAddresses()
 	if err != nil {

@@ -41,7 +41,7 @@ func (t *UpdateNodesTask) updateUsingRescueProxy() error {
 	src := "rescue-proxy"
 	t.logger.Info("Updating Rocket Pool node registry...", zap.String("source", src))
 
-	rescueProxyAPI := external.NewRescueProxyAPIClient(t.rescueProxyAddr, t.secureGRPC)
+	rescueProxyAPI := external.NewRescueProxyAPIClient(t.logger, t.rescueProxyAddr, t.secureGRPC)
 	defer rescueProxyAPI.Close()
 	nodes, err := rescueProxyAPI.GetRocketPoolNodes()
 	if err != nil {
