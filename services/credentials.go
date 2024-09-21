@@ -28,13 +28,13 @@ const (
 	credsRequestMaxAge = time.Duration(15) * time.Minute
 )
 
-type quota struct {
+type Quota struct {
 	// Max number of credentials that can be requested in a given time window.
-	count uint
+	Count uint `json:"count"`
 	// Time window in which the credential quota is calculated.
-	window time.Duration
+	Window time.Duration `json:"window"`
 	// Duration a credential is valid for
-	authValidityWindow time.Duration
+	AuthValidityWindow time.Duration `json:"authValidityWindow"`
 }
 
 var (
@@ -42,16 +42,16 @@ var (
 	// Values are taken from SQLite's default busy handler.
 	dbTryDelayMs = []int{1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50, 100}
 
-	quotas = map[credentials.OperatorType]quota{
-		pb.OperatorType_OT_ROCKETPOOL: quota{
-			count:              4,
-			window:             time.Duration(365*24) * time.Hour,
-			authValidityWindow: time.Duration(15*24) * time.Hour,
+	quotas = map[credentials.OperatorType]Quota{
+		pb.OperatorType_OT_ROCKETPOOL: {
+			Count:              4,
+			Window:             time.Duration(365*24) * time.Hour,
+			AuthValidityWindow: time.Duration(15*24) * time.Hour,
 		},
-		pb.OperatorType_OT_SOLO: quota{
-			count:              3,
-			window:             time.Duration(365*24) * time.Hour,
-			authValidityWindow: time.Duration(10*24) * time.Hour,
+		pb.OperatorType_OT_SOLO: {
+			Count:              3,
+			Window:             time.Duration(365*24) * time.Hour,
+			AuthValidityWindow: time.Duration(10*24) * time.Hour,
 		},
 	}
 )
@@ -63,7 +63,7 @@ func credsQuotaWindow(ot credentials.OperatorType) time.Duration {
 		return time.Duration(365*24) * time.Hour
 	}
 
-	return quota.window
+	return quota.Window
 }
 
 func credsQuota(ot credentials.OperatorType) int64 {
@@ -73,7 +73,7 @@ func credsQuota(ot credentials.OperatorType) int64 {
 		return 1
 	}
 
-	return int64(quota.count)
+	return int64(quota.Count)
 }
 
 func AuthValidityWindow(ot credentials.OperatorType) time.Duration {
@@ -83,7 +83,15 @@ func AuthValidityWindow(ot credentials.OperatorType) time.Duration {
 		return time.Duration(10*24) * time.Hour
 	}
 
-	return quota.authValidityWindow
+	return quota.AuthValidityWindow
+}
+
+func GetQuotaSettings(ot credentials.OperatorType) *Quota {
+	quotaSettings := Quota{}
+	quotaSettings.Count = uint(credsQuota(ot))
+	quotaSettings.Window = credsQuotaWindow(ot)
+	quotaSettings.AuthValidityWindow = AuthValidityWindow(ot)
+	return &quotaSettings
 }
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.

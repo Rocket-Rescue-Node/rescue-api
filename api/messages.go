@@ -53,8 +53,8 @@ type OperatorInfoRequest struct {
 }
 
 type OperatorInfoResponse struct {
-	CredentialEvents []int64 `json:"credentialEvents"`
-	NextCred         int64   `json:"nextCred"`
+	CredentialEvents []int64        `json:"credentialEvents"`
+	QuotaSettings    services.Quota `json:"quotaSettings"`
 }
 
 func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {

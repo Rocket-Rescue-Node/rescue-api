@@ -98,7 +98,7 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 
 	resp := OperatorInfoResponse{
 		CredentialEvents: operatorInfo.CredentialEvents,
-		NextCred:         operatorInfo.NextCred,
+		QuotaSettings:    operatorInfo.QuotaSettings,
 	}
 
 	return writeJSONResponse(w, http.StatusCreated, resp, "")

@@ -158,7 +158,7 @@ func TestCreateCredentialLifecycle(t *testing.T) {
 	// by authValidityWindow each time, and making sure that new credentials are
 	// created each time.
 	prevCred := c1
-	for i := 2; i < int(quotas[pb.OperatorType_OT_ROCKETPOOL].count); i++ {
+	for i := 2; i < int(quotas[pb.OperatorType_OT_ROCKETPOOL].Count); i++ {
 		clock.Advance(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL))
 		svc.nodes.LastUpdated = svc.clock.Now()
 		cred, err := createValidCredential(svc, node)
@@ -198,7 +198,7 @@ func TestCreateCredentialLifecycle(t *testing.T) {
 	// Advance the clock just enough so that the oldest credential is not within
 	// credsQuotaWindow anymore. This should increase the available quota to 1,
 	// and allow us to create a new credential.
-	c0QuotaExpiry := time.Unix(c0.Credential.Timestamp, 0).Add(quotas[pb.OperatorType_OT_ROCKETPOOL].window)
+	c0QuotaExpiry := time.Unix(c0.Credential.Timestamp, 0).Add(quotas[pb.OperatorType_OT_ROCKETPOOL].Window)
 	clock.Advance(c0QuotaExpiry.Sub(clock.Now()))
 
 	svc.nodes.LastUpdated = svc.clock.Now()

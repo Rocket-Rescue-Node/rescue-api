@@ -17,15 +17,20 @@ const (
 	operatorInfoRequestMaxAge = time.Duration(15) * time.Minute
 )
 
-func CreateOperatorInfo(credentialEvents []int64, nextCred int64) (*models.OperatorInfo, error) {
-	message := models.OperatorInfo{}
+type OperatorInfo struct {
+	CredentialEvents []int64 `json:"credentialEvents"`
+	QuotaSettings    Quota   `json:"quotaSettings"`
+}
+
+func CreateOperatorInfo(credentialEvents []int64, quotaSettings Quota) (*OperatorInfo, error) {
+	message := OperatorInfo{}
 	message.CredentialEvents = credentialEvents
-	message.NextCred = nextCred
+	message.QuotaSettings = quotaSettings
 
 	return &message, nil
 }
 
-func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*models.OperatorInfo, error) {
+func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
 	// Get node address
@@ -101,10 +106,10 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 	}
 
 	// Calculate when a new cred will be available
-	nextCred := int64(0) // Sno: TODO
+	quotaSettings := GetQuotaSettings(ot)
 
 	// Create operator info
-	operatorInfo, err := CreateOperatorInfo(events, nextCred)
+	operatorInfo, err := CreateOperatorInfo(events, *quotaSettings)
 	if err != nil {
 		return nil, err
 	}
