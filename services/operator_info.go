@@ -19,13 +19,13 @@ const (
 
 type OperatorInfo struct {
 	CredentialEvents []int64 `json:"credentialEvents"`
-	QuotaSettings    Quota   `json:"quotaSettings"`
+	QuotaSettings    *Quota  `json:"quotaSettings,omitempty"`
 }
 
 func CreateOperatorInfo(credentialEvents []int64, quotaSettings Quota) (*OperatorInfo, error) {
 	message := OperatorInfo{}
 	message.CredentialEvents = credentialEvents
-	message.QuotaSettings = quotaSettings
+	message.QuotaSettings = &quotaSettings
 
 	return &message, nil
 }
@@ -111,7 +111,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 			"No creds found for operator",
 			zap.String("nodeID", nodeID.String()),
 		)
-		return nil, nil
+		return &OperatorInfo{[]int64{}, nil}, nil
 	}
 
 	// Calculate when a new cred will be available

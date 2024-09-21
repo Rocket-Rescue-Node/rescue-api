@@ -93,8 +93,8 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 	}
 
 	// No cred events found
-	if operatorInfo == nil {
-		return writeJSONResponse(w, http.StatusNotFound, "{}", "")
+	if len(operatorInfo.CredentialEvents) == 0 {
+		return writeJSONResponse(w, http.StatusNotFound, operatorInfo, "")
 	}
 
 	// Cred events found
@@ -105,10 +105,10 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 
 	resp := OperatorInfoResponse{
 		CredentialEvents: operatorInfo.CredentialEvents,
-		QuotaSettings:    operatorInfo.QuotaSettings,
+		QuotaSettings:    *operatorInfo.QuotaSettings,
 	}
 
-	return writeJSONResponse(w, http.StatusCreated, resp, "")
+	return writeJSONResponse(w, http.StatusOK, resp, "")
 }
 
 // Wrapper to log unhandled errors.
