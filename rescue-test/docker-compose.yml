@@ -18,9 +18,9 @@ services:
       - proxy_cache:/var/rescue-proxy
     command:
       - -bn-url
-      - http://x.x.x.x:5052
+      - http://localhost:5052
       - -ec-url
-      - ws://x.x.x.x:8546
+      - ws://localhost:8546
       - -addr
       - 0.0.0.0:5052
       - -debug
