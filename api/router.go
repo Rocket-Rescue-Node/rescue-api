@@ -92,13 +92,13 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 	}
 
 	ar.logger.Info("Retrieved operator info",
-		zap.String("nodeID", hex.EncodeToString(operatorInfo.NodeID.Bytes())),
-		zap.Int("operator_type", int(operatorInfo.OperatorType)),
-		zap.Int64("timestamp", operatorInfo.Timestamp))
+		zap.String("nodeID", req.Address),
+		zap.Int("operator_type", int(req.operatorType)),
+	)
 
 	resp := OperatorInfoResponse{
-		Timestamp:        operatorInfo.Timestamp,
 		CredentialEvents: operatorInfo.CredentialEvents,
+		NextCred:         operatorInfo.NextCred,
 	}
 
 	return writeJSONResponse(w, http.StatusCreated, resp, "")

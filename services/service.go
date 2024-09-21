@@ -84,11 +84,11 @@ type Service struct {
 	withdrawalAddresses *models.NodeRegistry
 
 	// Database
-	db                   *sql.DB
-	getCredEventsStmt    *sql.Stmt
-	getAllCredEventsStmt *sql.Stmt
-	addCredEventStmt     *sql.Stmt
-	isNodeAuthorizedStmt *sql.Stmt
+	db                         *sql.DB
+	getCredEventsStmt          *sql.Stmt
+	getCredEventTimestampsStmt *sql.Stmt
+	addCredEventStmt           *sql.Stmt
+	isNodeAuthorizedStmt       *sql.Stmt
 
 	m      *metrics.MetricsRegistry
 	logger *zap.Logger
@@ -192,8 +192,8 @@ func (s *Service) prepareStatements() error {
 		return err
 	}
 
-	if s.getAllCredEventsStmt, err = s.db.Prepare(`
-		SELECT * FROM credential_events WHERE node_id = ? AND timestamp >= ? AND timestamp <= ? AND type = ? AND operator_type = ?;
+	if s.getCredEventTimestampsStmt, err = s.db.Prepare(`
+		SELECT timestamp FROM credential_events WHERE node_id = ? AND timestamp >= ? AND timestamp <= ? AND type = ? AND operator_type = ?;
 	`); err != nil {
 		return err
 	}

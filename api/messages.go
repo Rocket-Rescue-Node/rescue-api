@@ -10,7 +10,6 @@ import (
 
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
-	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
 )
 
@@ -54,8 +53,8 @@ type OperatorInfoRequest struct {
 }
 
 type OperatorInfoResponse struct {
-	Timestamp        int64                    `json:"timestamp"`
-	CredentialEvents []models.CredentialEvent `json:"credentialEvents"`
+	CredentialEvents []int64 `json:"credentialEvents"`
+	NextCred         int64   `json:"nextCred"`
 }
 
 func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {

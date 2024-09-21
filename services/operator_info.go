@@ -17,33 +17,13 @@ const (
 	operatorInfoRequestMaxAge = time.Duration(15) * time.Minute
 )
 
-func CreateCredentialEvent(timestamp time.Time, nodeID []byte, credType models.CredentialEventType, operatorType credentials.OperatorType) (*models.CredentialEvent, error) {
-	if len(nodeID) != 20 {
-		return nil, fmt.Errorf("invalid nodeID length. Expected 20, got %d", len(nodeID))
-	}
-	message := models.CredentialEvent{}
-	message.Timestamp = timestamp.Unix()
-	message.NodeID.SetBytes(nodeID)
-	message.Type = credType
-	message.OperatorType = operatorType
-
-	return &message, nil
-}
-
-func CreateOperatorInfo(timestamp time.Time, nodeID []byte, operatorType credentials.OperatorType, credentialEvents []models.CredentialEvent) (*models.OperatorInfo, error) {
-	if len(nodeID) != 20 {
-		return nil, fmt.Errorf("invalid nodeID length. Expected 20, got %d", len(nodeID))
-	}
+func CreateOperatorInfo(credentialEvents []int64, nextCred int64) (*models.OperatorInfo, error) {
 	message := models.OperatorInfo{}
-	message.Timestamp = timestamp.Unix()
-	message.NodeID.SetBytes(nodeID)
-	message.OperatorType = operatorType
 	message.CredentialEvents = credentialEvents
+	message.NextCred = nextCred
 
 	return &message, nil
 }
-
-// Sno: GetOperatorInfoWithRetry()?
 
 func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*models.OperatorInfo, error) {
 	var err error
@@ -94,53 +74,38 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		return nil, &AuthorizationError{"node is not authorized"}
 	}
 
-	// Sno: Is it necessary to use the locking logic for this?
-	// Start a transaction
-	tx, err := s.db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer rollback(tx)
-
 	// Query credentials issued for this nodeID in the current window.
 	now := s.clock.Now()
 	currentWindowStart := now.Add(-credsQuotaWindow(ot)).Unix()
-	gacs := tx.Stmt(s.getAllCredEventsStmt)
-	defer gacs.Close()
-	rows, err := gacs.Query(nodeID.Bytes(), currentWindowStart, now, models.CredentialIssued, ot)
+
+	rows, err := s.getCredEventTimestampsStmt.Query(nodeID.Bytes(), currentWindowStart, now, models.CredentialIssued, ot)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	// Parse credential events
-	var events []models.CredentialEvent
+	var events []int64
 	var credCount int64 = 0
 	for rows.Next() {
-		row_nodeID, row_timestamp, row_credType, row_operatorType := []byte{}, int64(0), 0, 0
-		if err := rows.Scan(&row_nodeID, &row_timestamp, &row_credType, &row_operatorType); err != nil {
+		row_timestamp := int64(0)
+		if err := rows.Scan(&row_timestamp); err != nil {
 			fmt.Println("Error scanning row:", err)
 			continue
 		}
-
-		event, err := CreateCredentialEvent(time.Unix(row_timestamp, 0), row_nodeID, models.CredentialEventType(row_credType), pb.OperatorType(row_operatorType))
-		if err != nil {
-			return nil, err
-		}
-		events = append(events, *event)
+		events = append(events, row_timestamp)
 		credCount += 1
 		if credCount == credsQuota(ot) {
 			break
 		}
 	}
 
-	// Create operator info
-	operatorInfo, err := CreateOperatorInfo(now, nodeID.Bytes(), ot, events)
-	if err != nil {
-		return nil, err
-	}
+	// Calculate when a new cred will be available
+	nextCred := int64(0) // Sno: TODO
 
-	// Commit the transaction.
-	if err := tx.Commit(); err != nil {
+	// Create operator info
+	operatorInfo, err := CreateOperatorInfo(events, nextCred)
+	if err != nil {
 		return nil, err
 	}
 
