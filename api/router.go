@@ -86,11 +86,18 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
 	}
 
+	// Get operator info
 	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), sig, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
 
+	// No cred events found
+	if operatorInfo == nil {
+		return writeJSONResponse(w, http.StatusNotFound, "{}", "")
+	}
+
+	// Cred events found
 	ar.logger.Info("Retrieved operator info",
 		zap.String("nodeID", req.Address),
 		zap.Int("operator_type", int(req.operatorType)),

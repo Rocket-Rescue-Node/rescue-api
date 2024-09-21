@@ -105,6 +105,15 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		}
 	}
 
+	// Return empty if no cred events found
+	if credCount == 0 {
+		s.logger.Info(
+			"No creds found for operator",
+			zap.String("nodeID", nodeID.String()),
+		)
+		return nil, nil
+	}
+
 	// Calculate when a new cred will be available
 	quotaSettings := GetQuotaSettings(ot)
 
@@ -116,7 +125,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 
 	s.logger.Info(
 		"Retrieved operator info",
-		zap.String("nodeID", string(nodeID.Bytes())),
+		zap.String("nodeID", nodeID.String()),
 		zap.String("operatorType", ot.String()),
 	)
 
