@@ -12,11 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	// The maximum age for a operator info request to be considered valid.
-	operatorInfoRequestMaxAge = time.Duration(15) * time.Minute
-)
-
 type OperatorInfo struct {
 	CredentialEvents []int64 `json:"credentialEvents"`
 	QuotaSettings    *Quota  `json:"quotaSettings,omitempty"`
@@ -50,7 +45,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		return nil, &ValidationError{"invalid timestamp"}
 	}
 	ts := time.Unix(tsSecs, 0)
-	if time.Since(ts) > operatorInfoRequestMaxAge {
+	if time.Since(ts) > credsRequestMaxAge {
 		s.m.Counter("get_operator_info_timestamp_too_old").Inc()
 		return nil, &AuthenticationError{"timestamp is too old"}
 	}
