@@ -153,6 +153,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
+	// Validate request
 	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
 	if err != nil {
 		return nil, err

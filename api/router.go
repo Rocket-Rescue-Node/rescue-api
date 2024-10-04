@@ -103,9 +103,15 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 		zap.Int("operator_type", int(req.operatorType)),
 	)
 
+	// Get operator quota settings
+	quotaSettings, err := services.GetQuotaJSON(req.operatorType)
+	if err != nil {
+		return err
+	}
+
 	resp := OperatorInfoResponse{
 		CredentialEvents: operatorInfo.CredentialEvents,
-		QuotaSettings:    operatorInfo.QuotaSettings,
+		QuotaSettings:    quotaSettings,
 	}
 
 	return writeJSONResponse(w, http.StatusOK, resp, "")

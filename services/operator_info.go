@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/Rocket-Rescue-Node/credentials"
@@ -10,13 +9,13 @@ import (
 )
 
 type OperatorInfo struct {
-	CredentialEvents []int64          `json:"credentialEvents"`
-	QuotaSettings    *json.RawMessage `json:"quotaSettings,omitempty"`
+	CredentialEvents []int64 `json:"credentialEvents"`
 }
 
 func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
+	// Validate request
 	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
 	if err != nil {
 		return nil, err
@@ -54,13 +53,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 			"No creds found for operator",
 			zap.String("nodeID", nodeID.String()),
 		)
-		return &OperatorInfo{[]int64{}, nil}, nil
-	}
-
-	// Get operator quota
-	quotaSettings, err := GetQuotaJSON(ot)
-	if err != nil {
-		return nil, err
+		return &OperatorInfo{[]int64{}}, nil
 	}
 
 	s.logger.Info(
@@ -70,5 +63,5 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 	)
 	s.m.Counter("retrieved_operator_info").Inc()
 
-	return &OperatorInfo{CredentialEvents: events, QuotaSettings: quotaSettings}, nil
+	return &OperatorInfo{CredentialEvents: events}, nil
 }
