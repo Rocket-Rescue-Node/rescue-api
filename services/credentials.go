@@ -153,19 +153,8 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
-	// Check request age
-	if err := s.checkRequestAge(&msg); err != nil {
-		return nil, err
-	}
-
-	// Recover nodeID
-	nodeID, err := s.getNodeID(&msg, &sig)
+	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
 	if err != nil {
-		return nil, err
-	}
-
-	// Check node authz
-	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
 		return nil, err
 	}
 

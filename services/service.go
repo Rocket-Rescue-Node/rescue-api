@@ -318,6 +318,26 @@ func (s *Service) checkNodeAuthorization(nodeID *models.NodeID, ot creds.Operato
 	return nil
 }
 
+func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, ot pb.OperatorType) (*common.Address, error) {
+	// Check request age
+	if err := s.checkRequestAge(msg); err != nil {
+		return nil, err
+	}
+
+	// Recover nodeID
+	nodeID, err := s.getNodeID(msg, sig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check node authz
+	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
+		return nil, err
+	}
+
+	return nodeID, nil
+}
+
 func (s *Service) Deinit() {
 	// Close prepared statements
 	for _, stmt := range []**sql.Stmt{

@@ -17,19 +17,8 @@ type OperatorInfo struct {
 func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
-	// Check request age
-	if err := s.checkRequestAge(&msg); err != nil {
-		return nil, err
-	}
-
-	// Recover nodeID
-	nodeID, err := s.getNodeID(&msg, &sig)
+	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
 	if err != nil {
-		return nil, err
-	}
-
-	// Check node authz
-	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
 		return nil, err
 	}
 
