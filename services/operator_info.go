@@ -3,13 +3,9 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/Rocket-Rescue-Node/credentials"
-	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
-	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
-	"github.com/Rocket-Rescue-Node/rescue-api/util"
 	"go.uber.org/zap"
 )
 
@@ -21,50 +17,20 @@ type OperatorInfo struct {
 func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
-	// Get node address
-	nodeID, err := util.RecoverAddressFromSignature(msg, sig)
+	// Check request age
+	if err := s.checkRequestAge(&msg); err != nil {
+		return nil, err
+	}
+
+	// Recover nodeID
+	nodeID, err := s.getNodeID(&msg, &sig)
 	if err != nil {
-		msg := "failed to recover nodeID from signature"
-		s.logger.Warn(msg, zap.Error(err))
-		s.m.Counter("get_operator_info_failed_auth").Inc()
-		return nil, &AuthenticationError{msg}
-	}
-	s.logger.Info("Recovered nodeID from signature", zap.String("nodeID", nodeID.Hex()))
-
-	// Check if the request is fresh
-	tsSecs, err := s.getTimestampFromRequest(string(msg))
-	if err != nil {
-		s.m.Counter("get_operator_info_invalid_timestamp").Inc()
-		return nil, &ValidationError{"invalid timestamp"}
-	}
-	ts := time.Unix(tsSecs, 0)
-	if time.Since(ts) > credsRequestMaxAge {
-		s.m.Counter("get_operator_info_timestamp_too_old").Inc()
-		return nil, &AuthenticationError{"timestamp is too old"}
+		return nil, err
 	}
 
-	// Check if this node is part of Rocket Pool, or a valid 0x01 credential.
-	switch ot {
-	case pb.OperatorType_OT_ROCKETPOOL:
-		if !s.isNodeRegistered(nodeID) {
-			s.m.Counter("get_operator_info_node_not_registered").Inc()
-			return nil, &AuthorizationError{"node is not registered"}
-		}
-	case pb.OperatorType_OT_SOLO:
-		if !s.enableSoloValidators {
-			s.m.Counter("get_operator_info_solo_traffic_shedding").Inc()
-			return nil, &AuthorizationError{"solo validators are currently not permitted"}
-		}
-		if !s.isWithdrawalAddress(nodeID) {
-			s.m.Counter("get_operator_info_solo_not_withdrawal_address").Inc()
-			return nil, &AuthorizationError{"wallet is not a withdrawal address for any validator"}
-		}
-	}
-
-	// Make sure that the node is not banned from using the service.
-	if !s.isNodeAuthorized(nodeID, authz.CredentialService) {
-		s.m.Counter("get_operator_info_user_banned").Inc()
-		return nil, &AuthorizationError{"node is not authorized"}
+	// Check node authz
+	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
+		return nil, err
 	}
 
 	// Query credentials issued for this nodeID in the current window.

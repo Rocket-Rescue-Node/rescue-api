@@ -11,8 +11,6 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
-	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
-	"github.com/Rocket-Rescue-Node/rescue-api/util"
 
 	"github.com/mattn/go-sqlite3"
 
@@ -155,49 +153,20 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
-	nodeID, err := util.RecoverAddressFromSignature(msg, sig)
+	// Check request age
+	if err := s.checkRequestAge(&msg); err != nil {
+		return nil, err
+	}
+
+	// Recover nodeID
+	nodeID, err := s.getNodeID(&msg, &sig)
 	if err != nil {
-		msg := "failed to recover nodeID from signature"
-		s.logger.Warn(msg, zap.Error(err))
-		s.m.Counter("create_credential_failed_auth").Inc()
-		return nil, &AuthenticationError{msg}
-	}
-	s.logger.Info("Recovered nodeID from signature", zap.String("nodeID", nodeID.Hex()))
-
-	// Check if the request is fresh.
-	tsSecs, err := s.getTimestampFromRequest(string(msg))
-	if err != nil {
-		s.m.Counter("create_credential_invalid_timestamp").Inc()
-		return nil, &ValidationError{"invalid timestamp"}
-	}
-	ts := time.Unix(tsSecs, 0)
-	if time.Since(ts) > credsRequestMaxAge {
-		s.m.Counter("create_credential_timestamp_too_old").Inc()
-		return nil, &AuthenticationError{"timestamp is too old"}
+		return nil, err
 	}
 
-	// Check if this node is part of Rocket Pool, or a valid 0x01 credential.
-	switch ot {
-	case pb.OperatorType_OT_ROCKETPOOL:
-		if !s.isNodeRegistered(nodeID) {
-			s.m.Counter("create_credential_node_not_registered").Inc()
-			return nil, &AuthorizationError{"node is not registered"}
-		}
-	case pb.OperatorType_OT_SOLO:
-		if !s.enableSoloValidators {
-			s.m.Counter("create_credential_solo_traffic_shedding").Inc()
-			return nil, &AuthorizationError{"solo validators are currently not permitted"}
-		}
-		if !s.isWithdrawalAddress(nodeID) {
-			s.m.Counter("create_credential_solo_not_withdrawal_address").Inc()
-			return nil, &AuthorizationError{"wallet is not a withdrawal address for any validator"}
-		}
-	}
-
-	// Make sure that the node is not banned from using the service.
-	if !s.isNodeAuthorized(nodeID, authz.CredentialService) {
-		s.m.Counter("create_credential_user_banned").Inc()
-		return nil, &AuthorizationError{"node is not authorized"}
+	// Check node authz
+	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
+		return nil, err
 	}
 
 	// Start a transaction to ensure that parallel requests do not create duplicate credentials.
