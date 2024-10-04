@@ -83,10 +83,6 @@ func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) er
 	if ok && len(operatorType) > 0 && strings.EqualFold(operatorType[0], "solo") {
 		req.(*CreateCredentialRequest).operatorType = credentials.OperatorType(pb.OperatorType_OT_SOLO)
 	}
-	if !ok {
-		const msg = "missing required URL parameter: operator_type"
-		return &decodingError{status: http.StatusBadRequest, msg: msg}
-	}
 
 	return nil
 }
