@@ -44,7 +44,7 @@ type CreateCredentialResponse struct {
 }
 
 // OperatorInfoRequests have the same form as credential requests, so use a type alias to avoid duplicate code.
-type OperatorInfoRequest CredentialRequest
+type OperatorInfoRequest CreateCredentialRequest
 
 type OperatorInfoResponse struct {
 	CredentialEvents []int64        `json:"credentialEvents"`
