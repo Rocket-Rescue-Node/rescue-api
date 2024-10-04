@@ -18,18 +18,6 @@ type OperatorInfo struct {
 	QuotaSettings    *json.RawMessage `json:"quotaSettings,omitempty"`
 }
 
-func CreateOperatorInfo(credentialEvents []int64, ot credentials.OperatorType) (*OperatorInfo, error) {
-	message := OperatorInfo{}
-	message.CredentialEvents = credentialEvents
-	quotaSettings, err := GetQuotaJSON(ot)
-	if err != nil {
-		return nil, err
-	}
-	message.QuotaSettings = quotaSettings
-
-	return &message, nil
-}
-
 func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
@@ -114,8 +102,8 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		return &OperatorInfo{[]int64{}, nil}, nil
 	}
 
-	// Create operator info
-	operatorInfo, err := CreateOperatorInfo(events, ot)
+	// Get operator quota
+	quotaSettings, err := GetQuotaJSON(ot)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +113,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		zap.String("nodeID", nodeID.String()),
 		zap.String("operatorType", ot.String()),
 	)
-
 	s.m.Counter("retrieved_operator_info").Inc()
-	return operatorInfo, nil
+
+	return &OperatorInfo{CredentialEvents: events, QuotaSettings: quotaSettings}, nil
 }
