@@ -51,7 +51,7 @@ type OperatorInfoResponse struct {
 	QuotaSettings    services.Quota `json:"quotaSettings"`
 }
 
-func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {
+func validateJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {
 	var err error
 
 	contentType := r.Header.Get("Content-Type")

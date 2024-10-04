@@ -17,14 +17,14 @@ type apiRouter struct {
 	logger *zap.Logger
 }
 
-func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
-	// Try to decode the request body.
-	var req CreateCredentialRequest
-	if err := readJSONRequest(w, r, &req); err != nil {
-		return writeJSONError(w, err)
+func readJSONRequest(w http.ResponseWriter, r *http.Request, req *CreateCredentialRequest, logger *zap.Logger) (*[]byte, error) {
+	// Validate the request body
+	if err := validateJSONRequest(w, r, req); err != nil {
+		return nil, writeJSONError(w, err)
 	}
 
-	ar.logger.Info("Got credential request",
+	logger.Info("Got valid request",
+		zap.String("endpoint", r.URL.Path),
 		zap.String("address", req.Address),
 		zap.String("msg", req.Msg),
 		zap.String("sig", req.Sig),
@@ -32,13 +32,26 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		zap.Int("operator_type", int(req.operatorType)),
 	)
 
+	// Validate the message signature
 	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
 	if err != nil {
 		msg := "invalid signature"
-		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
+		return nil, writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
 	}
 
-	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig, req.operatorType)
+	return &sig, nil
+}
+
+func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
+	// Try to read the request
+	var req CreateCredentialRequest
+	sig, err := readJSONRequest(w, r, &req, ar.logger)
+	if err != nil {
+		return writeJSONError(w, err)
+	}
+
+	// Create the credential
+	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), *sig, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -66,28 +79,15 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 }
 
 func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) error {
-	// Try to decode the request body.
+	// Try to read the request
 	var req OperatorInfoRequest
-	if err := readJSONRequest(w, r, &req); err != nil {
+	sig, err := readJSONRequest(w, r, (*CreateCredentialRequest)(&req), ar.logger)
+	if err != nil {
 		return writeJSONError(w, err)
 	}
 
-	ar.logger.Info("Got operator info request",
-		zap.String("address", req.Address),
-		zap.String("msg", req.Msg),
-		zap.String("sig", req.Sig),
-		zap.String("version", req.Version),
-		zap.Int("operator_type", int(req.operatorType)),
-	)
-
-	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
-	if err != nil {
-		msg := "invalid signature"
-		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
-	}
-
 	// Get operator info
-	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), sig, req.operatorType)
+	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), *sig, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
