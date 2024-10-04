@@ -29,11 +29,11 @@ const (
 
 type quota struct {
 	// Max number of credentials that can be requested in a given time window.
-	count uint `json:"count"`
+	count uint
 	// Time window in which the credential quota is calculated.
-	window time.Duration `json:"window"`
+	window time.Duration
 	// Duration a credential is valid for
-	authValidityWindow time.Duration `json:"authValidityWindow"`
+	authValidityWindow time.Duration
 }
 
 var (

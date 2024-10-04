@@ -43,7 +43,6 @@ type CreateCredentialResponse struct {
 	ExpiresAt int64  `json:"expiresAt"`
 }
 
-// OperatorInfoRequests have the same form as credential requests, so use a type alias to avoid duplicate code.
 type OperatorInfoRequest CreateCredentialRequest
 
 type OperatorInfoResponse struct {
