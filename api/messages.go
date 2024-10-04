@@ -47,8 +47,8 @@ type CreateCredentialResponse struct {
 type OperatorInfoRequest CreateCredentialRequest
 
 type OperatorInfoResponse struct {
-	CredentialEvents []int64        `json:"credentialEvents"`
-	QuotaSettings    services.Quota `json:"quotaSettings"`
+	CredentialEvents []int64          `json:"credentialEvents"`
+	QuotaSettings    *json.RawMessage `json:"quotaSettings"`
 }
 
 func validateJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -13,14 +14,18 @@ import (
 )
 
 type OperatorInfo struct {
-	CredentialEvents []int64 `json:"credentialEvents"`
-	QuotaSettings    *Quota  `json:"quotaSettings,omitempty"`
+	CredentialEvents []int64          `json:"credentialEvents"`
+	QuotaSettings    *json.RawMessage `json:"quotaSettings,omitempty"`
 }
 
-func CreateOperatorInfo(credentialEvents []int64, quotaSettings Quota) (*OperatorInfo, error) {
+func CreateOperatorInfo(credentialEvents []int64, ot credentials.OperatorType) (*OperatorInfo, error) {
 	message := OperatorInfo{}
 	message.CredentialEvents = credentialEvents
-	message.QuotaSettings = &quotaSettings
+	quotaSettings, err := GetQuotaJSON(ot)
+	if err != nil {
+		return nil, err
+	}
+	message.QuotaSettings = quotaSettings
 
 	return &message, nil
 }
@@ -109,11 +114,8 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		return &OperatorInfo{[]int64{}, nil}, nil
 	}
 
-	// Calculate when a new cred will be available
-	quotaSettings := GetQuotaSettings(ot)
-
 	// Create operator info
-	operatorInfo, err := CreateOperatorInfo(events, *quotaSettings)
+	operatorInfo, err := CreateOperatorInfo(events, ot)
 	if err != nil {
 		return nil, err
 	}
