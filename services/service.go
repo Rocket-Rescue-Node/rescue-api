@@ -196,7 +196,7 @@ func (s *Service) prepareStatements() error {
 	}
 
 	if s.getCredEventTimestampsStmt, err = s.db.Prepare(`
-		SELECT timestamp FROM credential_events WHERE node_id = ? AND timestamp >= ? AND timestamp <= ? AND type = ? AND operator_type = ?;
+		SELECT timestamp FROM credential_events WHERE node_id = ? AND timestamp > ? AND timestamp <= ? AND type = ? AND operator_type = ?;
 	`); err != nil {
 		return err
 	}
