@@ -42,7 +42,7 @@ docker-publish: check-env
 
 .PHONY: docker-build
 docker-build: check-env
-	docker buildx build --platform $(PLATFORMS) \
+	docker buildx build --builder multiarch --platform $(PLATFORMS) \
 		-t $(REPO):latest \
 		--load \
 		.
