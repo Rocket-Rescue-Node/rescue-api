@@ -25,7 +25,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 	now := s.clock.Now()
 	currentWindowStart := now.Add(-credsQuotaWindow(ot)).Unix()
 
-	rows, err := s.getCredEventTimestampsStmt.Query(nodeID.Bytes(), currentWindowStart, now, models.CredentialIssued, ot)
+	rows, err := s.getCredEventTimestampsStmt.Query(nodeID.Bytes(), currentWindowStart, now.Unix(), models.CredentialIssued, ot)
 	if err != nil {
 		return nil, err
 	}
