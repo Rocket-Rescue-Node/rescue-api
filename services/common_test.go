@@ -1,12 +1,9 @@
 package services
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/Rocket-Rescue-Node/credentials"
-	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/database"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	"github.com/Rocket-Rescue-Node/rescue-api/util"
@@ -96,36 +93,4 @@ func createTestNode(svc *Service, register bool) (*util.Wallet, error) {
 		svc.nodes.LastUpdated = svc.clock.Now()
 	}
 	return wallet, nil
-}
-
-func createValidCredential(svc *Service, node *util.Wallet) (*credentials.AuthenticatedCredential, error) {
-	var err error
-
-	// Create a credentials request.
-	var sig []byte
-	msg := []byte(fmt.Sprintf("Rescue Node %d", svc.clock.Now().Unix()))
-	if sig, err = node.Sign(msg); err != nil {
-		return nil, fmt.Errorf("Could not sign message: %v", err)
-	}
-	// Create credential.
-	cred, err := svc.CreateCredentialWithRetry(msg, sig, pb.OperatorType_OT_ROCKETPOOL)
-	if err != nil {
-		return nil, err
-	}
-	// Check credential.
-	if cred == nil || cred.Credential == nil {
-		return nil, fmt.Errorf("Credential should not be nil")
-	}
-	// Check that the credential has a valid HMAC.
-	if _, err = svc.cm.Verify(cred); err != nil {
-		return nil, fmt.Errorf("Credential HMAC is invalid: %v", err)
-	}
-	// Make sure the node ID matches the node address.
-	if !bytes.Equal(cred.Credential.NodeId, node.Address.Bytes()) {
-		err := fmt.Errorf("Credential node ID does not match node address (%x != %x)",
-			cred.Credential.NodeId, node.Address.Bytes())
-		return nil, err
-	}
-
-	return cred, nil
 }
