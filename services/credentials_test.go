@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -317,5 +318,49 @@ func TestCreateCredentialConcurrent(t *testing.T) {
 	// Check for errors.
 	if len(errChan) > 0 {
 		t.Fatalf("Received errors: %d", len(errChan))
+	}
+}
+
+func TestGetQuotaJson(t *testing.T) {
+	// Test getting quota settings json message
+	quotaJson, err := GetQuotaJSON(pb.OperatorType_OT_ROCKETPOOL)
+	if err != nil {
+		t.Fatalf("Could not get quota settings json: %v", err)
+	}
+
+	// Unmarshall raw message to check values
+	var quota map[string]interface{}
+	if err := json.Unmarshal(*quotaJson, &quota); err != nil {
+		t.Fatalf("Error unmarshalling quota json: %v", err)
+	}
+
+	// Check count
+	fCount, ok := quota["count"].(float64)
+	if !ok {
+		t.Fatalf("Error parsing count from quota json")
+	}
+	count := int64(fCount)
+	if count != credsQuota(pb.OperatorType_OT_ROCKETPOOL) {
+		t.Fatalf("Incorrect quota count. Expected %d, got %d", credsQuota(pb.OperatorType_OT_ROCKETPOOL), count)
+	}
+
+	// Check window
+	fWindow, ok := quota["window"].(float64)
+	if !ok {
+		t.Fatalf("Error parsing window from quota json")
+	}
+	window := int64(fWindow)
+	if window != int64(credsQuotaWindow(pb.OperatorType_OT_ROCKETPOOL)) {
+		t.Fatalf("Incorrect quota window. Expected %d, got %d", int64(credsQuotaWindow(pb.OperatorType_OT_ROCKETPOOL)), window)
+	}
+
+	// Check authValidityWindow
+	fValidityWindow, ok := quota["authValidityWindow"].(float64)
+	authValidityWindow := int64(fValidityWindow)
+	if !ok {
+		t.Fatalf("Error parsing authValidityWindow from quota json")
+	}
+	if authValidityWindow != int64(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL)) {
+		t.Fatalf("Incorrect quota authValidityWindow. Expected %d,  got %d", AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL), authValidityWindow)
 	}
 }
