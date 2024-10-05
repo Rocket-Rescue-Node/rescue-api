@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
@@ -10,8 +11,6 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
-	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
-	"github.com/Rocket-Rescue-Node/rescue-api/util"
 
 	"github.com/mattn/go-sqlite3"
 
@@ -43,12 +42,12 @@ var (
 	dbTryDelayMs = []int{1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50, 100}
 
 	quotas = map[credentials.OperatorType]quota{
-		pb.OperatorType_OT_ROCKETPOOL: quota{
+		pb.OperatorType_OT_ROCKETPOOL: {
 			count:              4,
 			window:             time.Duration(365*24) * time.Hour,
 			authValidityWindow: time.Duration(15*24) * time.Hour,
 		},
-		pb.OperatorType_OT_SOLO: quota{
+		pb.OperatorType_OT_SOLO: {
 			count:              3,
 			window:             time.Duration(365*24) * time.Hour,
 			authValidityWindow: time.Duration(10*24) * time.Hour,
@@ -84,6 +83,21 @@ func AuthValidityWindow(ot credentials.OperatorType) time.Duration {
 	}
 
 	return quota.authValidityWindow
+}
+
+func GetQuotaJSON(ot credentials.OperatorType) (json.RawMessage, error) {
+	quotaData := map[string]interface{}{
+		"count":              uint(credsQuota(ot)),
+		"window":             credsQuotaWindow(ot),
+		"authValidityWindow": AuthValidityWindow(ot),
+	}
+
+	quotaJson, err := json.Marshal(quotaData)
+	if err != nil {
+		return nil, err
+	}
+
+	return quotaJson, nil
 }
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.
@@ -137,49 +151,10 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
-	nodeID, err := util.RecoverAddressFromSignature(msg, sig)
+	// Validate request
+	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
 	if err != nil {
-		msg := "failed to recover nodeID from signature"
-		s.logger.Warn(msg, zap.Error(err))
-		s.m.Counter("create_credential_failed_auth").Inc()
-		return nil, &AuthenticationError{msg}
-	}
-	s.logger.Info("Recovered nodeID from signature", zap.String("nodeID", nodeID.Hex()))
-
-	// Check if the request is fresh.
-	tsSecs, err := s.getTimestampFromRequest(string(msg))
-	if err != nil {
-		s.m.Counter("create_credential_invalid_timestamp").Inc()
-		return nil, &ValidationError{"invalid timestamp"}
-	}
-	ts := time.Unix(tsSecs, 0)
-	if time.Since(ts) > credsRequestMaxAge {
-		s.m.Counter("create_credential_timestamp_too_old").Inc()
-		return nil, &AuthenticationError{"timestamp is too old"}
-	}
-
-	// Check if this node is part of Rocket Pool, or a valid 0x01 credential.
-	switch ot {
-	case pb.OperatorType_OT_ROCKETPOOL:
-		if !s.isNodeRegistered(nodeID) {
-			s.m.Counter("create_credential_node_not_registered").Inc()
-			return nil, &AuthorizationError{"node is not registered"}
-		}
-	case pb.OperatorType_OT_SOLO:
-		if !s.enableSoloValidators {
-			s.m.Counter("create_credential_solo_traffic_shedding").Inc()
-			return nil, &AuthorizationError{"solo validators are currently not permitted"}
-		}
-		if !s.isWithdrawalAddress(nodeID) {
-			s.m.Counter("create_credential_solo_not_withdrawal_address").Inc()
-			return nil, &AuthorizationError{"wallet is not a withdrawal address for any validator"}
-		}
-	}
-
-	// Make sure that the node is not banned from using the service.
-	if !s.isNodeAuthorized(nodeID, authz.CredentialService) {
-		s.m.Counter("create_credential_user_banned").Inc()
-		return nil, &AuthorizationError{"node is not authorized"}
+		return nil, err
 	}
 
 	// Start a transaction to ensure that parallel requests do not create duplicate credentials.

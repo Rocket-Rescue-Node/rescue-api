@@ -7,9 +7,12 @@ import (
 	"time"
 
 	creds "github.com/Rocket-Rescue-Node/credentials"
+	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
+	"github.com/Rocket-Rescue-Node/rescue-api/util"
 	"github.com/Rocket-Rescue-Node/rescue-proxy/metrics"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
 )
@@ -84,10 +87,11 @@ type Service struct {
 	withdrawalAddresses *models.NodeRegistry
 
 	// Database
-	db                   *sql.DB
-	getCredEventsStmt    *sql.Stmt
-	addCredEventStmt     *sql.Stmt
-	isNodeAuthorizedStmt *sql.Stmt
+	db                         *sql.DB
+	getCredEventsStmt          *sql.Stmt
+	getCredEventTimestampsStmt *sql.Stmt
+	addCredEventStmt           *sql.Stmt
+	isNodeAuthorizedStmt       *sql.Stmt
 
 	m      *metrics.MetricsRegistry
 	logger *zap.Logger
@@ -191,6 +195,12 @@ func (s *Service) prepareStatements() error {
 		return err
 	}
 
+	if s.getCredEventTimestampsStmt, err = s.db.Prepare(`
+		SELECT timestamp FROM credential_events WHERE node_id = ? AND timestamp > ? AND timestamp <= ? AND type = ? AND operator_type = ?;
+	`); err != nil {
+		return err
+	}
+
 	if s.addCredEventStmt, err = s.db.Prepare(`
 		INSERT INTO credential_events (node_id, timestamp, type, operator_type) VALUES (?, ?, ?, ?);
 	`); err != nil {
@@ -249,6 +259,83 @@ func (s *Service) isNodeAuthorized(nodeID *models.NodeID, svc authz.Resource) bo
 	}
 	defer rows.Close()
 	return !rows.Next()
+}
+
+func (s *Service) checkRequestAge(msg *[]byte) error {
+	// Check if the request is fresh
+	tsSecs, err := s.getTimestampFromRequest(string(*msg))
+	if err != nil {
+		s.m.Counter("invalid_timestamp").Inc()
+		return &ValidationError{"invalid timestamp"}
+	}
+	ts := time.Unix(tsSecs, 0)
+	if time.Since(ts) > credsRequestMaxAge {
+		s.m.Counter("timestamp_too_old").Inc()
+		return &AuthenticationError{"timestamp is too old"}
+	}
+
+	return nil
+}
+
+func (s *Service) getNodeID(msg *[]byte, sig *[]byte) (*common.Address, error) {
+	// Recover the nodeID
+	nodeID, err := util.RecoverAddressFromSignature(*msg, *sig)
+	if err != nil {
+		msg := "failed to recover nodeID from signature"
+		s.logger.Warn(msg, zap.Error(err))
+		s.m.Counter("failed_auth").Inc()
+		return nil, &AuthenticationError{msg}
+	}
+	s.logger.Info("Recovered nodeID from signature", zap.String("nodeID", nodeID.Hex()))
+	return nodeID, nil
+}
+
+func (s *Service) checkNodeAuthorization(nodeID *models.NodeID, ot creds.OperatorType) error {
+	// Check if this node is part of Rocket Pool, or a valid 0x01 credential
+	switch ot {
+	case pb.OperatorType_OT_ROCKETPOOL:
+		if !s.isNodeRegistered(nodeID) {
+			s.m.Counter("node_not_registered").Inc()
+			return &AuthorizationError{"node is not registered"}
+		}
+	case pb.OperatorType_OT_SOLO:
+		if !s.enableSoloValidators {
+			s.m.Counter("solo_traffic_shedding").Inc()
+			return &AuthorizationError{"solo validators are currently not permitted"}
+		}
+		if !s.isWithdrawalAddress(nodeID) {
+			s.m.Counter("solo_not_withdrawal_address").Inc()
+			return &AuthorizationError{"wallet is not a withdrawal address for any validator"}
+		}
+	}
+
+	// Make sure that the node is not banned from using the service.
+	if !s.isNodeAuthorized(nodeID, authz.CredentialService) {
+		s.m.Counter("user_banned").Inc()
+		return &AuthorizationError{"node is not authorized"}
+	}
+
+	return nil
+}
+
+func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, ot pb.OperatorType) (*common.Address, error) {
+	// Check request age
+	if err := s.checkRequestAge(msg); err != nil {
+		return nil, err
+	}
+
+	// Recover nodeID
+	nodeID, err := s.getNodeID(msg, sig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check node authz
+	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
+		return nil, err
+	}
+
+	return nodeID, nil
 }
 
 func (s *Service) Deinit() {

@@ -17,14 +17,14 @@ type apiRouter struct {
 	logger *zap.Logger
 }
 
-func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
-	// Try to decode the request body.
-	var req CreateCredentialRequest
-	if err := readJSONRequest(w, r, &req); err != nil {
-		return writeJSONError(w, err)
+func readJSONRequest(w http.ResponseWriter, r *http.Request, req *CreateCredentialRequest, logger *zap.Logger) (*[]byte, error) {
+	// Validate the request body
+	if err := validateJSONRequest(w, r, req); err != nil {
+		return nil, writeJSONError(w, err)
 	}
 
-	ar.logger.Info("Got credential request",
+	logger.Info("Got valid request",
+		zap.String("endpoint", r.URL.Path),
 		zap.String("address", req.Address),
 		zap.String("msg", req.Msg),
 		zap.String("sig", req.Sig),
@@ -32,13 +32,26 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 		zap.Int("operator_type", int(req.operatorType)),
 	)
 
+	// Validate the message signature
 	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
 	if err != nil {
 		msg := "invalid signature"
-		return writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
+		return nil, writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
 	}
 
-	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), sig, req.operatorType)
+	return &sig, nil
+}
+
+func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
+	// Try to read the request
+	var req CreateCredentialRequest
+	sig, err := readJSONRequest(w, r, &req, ar.logger)
+	if err != nil {
+		return writeJSONError(w, err)
+	}
+
+	// Create the credential
+	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), *sig, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -63,6 +76,45 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 	}
 
 	return writeJSONResponse(w, http.StatusCreated, resp, "")
+}
+
+func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) error {
+	// Try to read the request
+	var req OperatorInfoRequest
+	sig, err := readJSONRequest(w, r, (*CreateCredentialRequest)(&req), ar.logger)
+	if err != nil {
+		return writeJSONError(w, err)
+	}
+
+	// Get operator info
+	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), *sig, req.operatorType)
+	if err != nil {
+		return writeJSONError(w, err)
+	}
+
+	// No cred events found
+	if len(operatorInfo.CredentialEvents) == 0 {
+		return writeJSONResponse(w, http.StatusNotFound, operatorInfo, "")
+	}
+
+	// Cred events found
+	ar.logger.Info("Retrieved operator info",
+		zap.String("nodeID", req.Address),
+		zap.Int("operator_type", int(req.operatorType)),
+	)
+
+	// Get operator quota settings
+	quotaSettings, err := services.GetQuotaJSON(req.operatorType)
+	if err != nil {
+		return err
+	}
+
+	resp := OperatorInfoResponse{
+		CredentialEvents: operatorInfo.CredentialEvents,
+		QuotaSettings:    &quotaSettings,
+	}
+
+	return writeJSONResponse(w, http.StatusOK, resp, "")
 }
 
 // Wrapper to log unhandled errors.
@@ -91,6 +143,8 @@ func NewAPIRouter(path string, svc *services.Service, origins []string, logger *
 	allowedMethods := []string{"GET", "POST", "OPTIONS"}
 	sr.HandleFunc("/credentials", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
 	sr.HandleFunc("/credentials/", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
+	sr.HandleFunc("/info", ah.wrapHandler(ah.GetOperatorInfo)).Methods(allowedMethods...)
+	sr.HandleFunc("/info/", ah.wrapHandler(ah.GetOperatorInfo)).Methods(allowedMethods...)
 
 	// CORS support.
 	ch := cors.New(cors.Options{

@@ -43,7 +43,14 @@ type CreateCredentialResponse struct {
 	ExpiresAt int64  `json:"expiresAt"`
 }
 
-func readJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {
+type OperatorInfoRequest CreateCredentialRequest
+
+type OperatorInfoResponse struct {
+	CredentialEvents []int64          `json:"credentialEvents"`
+	QuotaSettings    *json.RawMessage `json:"quotaSettings"`
+}
+
+func validateJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {
 	var err error
 
 	contentType := r.Header.Get("Content-Type")
