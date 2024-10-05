@@ -85,21 +85,19 @@ func AuthValidityWindow(ot credentials.OperatorType) time.Duration {
 	return quota.authValidityWindow
 }
 
-func GetQuotaJSON(ot credentials.OperatorType) (*json.RawMessage, error) {
+func GetQuotaJSON(ot credentials.OperatorType) (json.RawMessage, error) {
 	quotaData := map[string]interface{}{
 		"count":              uint(credsQuota(ot)),
 		"window":             credsQuotaWindow(ot),
 		"authValidityWindow": AuthValidityWindow(ot),
 	}
 
-	jsonData, err := json.Marshal(quotaData)
+	quotaJson, err := json.Marshal(quotaData)
 	if err != nil {
 		return nil, err
 	}
 
-	var quotaJson json.RawMessage = jsonData
-
-	return &quotaJson, nil
+	return quotaJson, nil
 }
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.

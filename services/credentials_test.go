@@ -330,7 +330,7 @@ func TestGetQuotaJson(t *testing.T) {
 
 	// Unmarshall raw message to check values
 	var quota map[string]interface{}
-	if err := json.Unmarshal(*quotaJson, &quota); err != nil {
+	if err := json.Unmarshal(quotaJson, &quota); err != nil {
 		t.Fatalf("Error unmarshalling quota json: %v", err)
 	}
 
