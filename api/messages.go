@@ -50,7 +50,7 @@ type OperatorInfoResponse struct {
 	QuotaSettings    *json.RawMessage `json:"quotaSettings"`
 }
 
-func validateJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}) error {
+func validateJSONRequest(r *http.Request, req interface{}) error {
 	var err error
 
 	contentType := r.Header.Get("Content-Type")
@@ -59,9 +59,6 @@ func validateJSONRequest(w http.ResponseWriter, r *http.Request, req interface{}
 		const msg = "Content-Type is not application/json"
 		return &decodingError{status: http.StatusUnsupportedMediaType, msg: msg}
 	}
-
-	// Limit the size of the request body to 2 KB
-	r.Body = http.MaxBytesReader(w, r.Body, 2048)
 
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()

@@ -17,35 +17,36 @@ type apiRouter struct {
 	logger *zap.Logger
 }
 
-func readJSONRequest(w http.ResponseWriter, r *http.Request, req *CreateCredentialRequest, logger *zap.Logger) (*[]byte, error) {
+func readJSONRequest(r *http.Request, logger *zap.Logger) (*[]byte, *CreateCredentialRequest, error) {
+	out := new(CreateCredentialRequest)
+
 	// Validate the request body
-	if err := validateJSONRequest(w, r, req); err != nil {
-		return nil, writeJSONError(w, err)
+	if err := validateJSONRequest(r, out); err != nil {
+		return nil, nil, err
 	}
 
 	logger.Info("Got valid request",
 		zap.String("endpoint", r.URL.Path),
-		zap.String("address", req.Address),
-		zap.String("msg", req.Msg),
-		zap.String("sig", req.Sig),
-		zap.String("version", req.Version),
-		zap.Int("operator_type", int(req.operatorType)),
+		zap.String("address", out.Address),
+		zap.String("msg", out.Msg),
+		zap.String("sig", out.Sig),
+		zap.String("version", out.Version),
+		zap.Int("operator_type", int(out.operatorType)),
 	)
 
 	// Validate the message signature
-	sig, err := hex.DecodeString(strings.TrimPrefix(req.Sig, "0x"))
+	sig, err := hex.DecodeString(strings.TrimPrefix(out.Sig, "0x"))
 	if err != nil {
 		msg := "invalid signature"
-		return nil, writeJSONError(w, &decodingError{status: http.StatusBadRequest, msg: msg})
+		return nil, nil, &decodingError{status: http.StatusBadRequest, msg: msg}
 	}
 
-	return &sig, nil
+	return &sig, out, nil
 }
 
 func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
 	// Try to read the request
-	var req CreateCredentialRequest
-	sig, err := readJSONRequest(w, r, &req, ar.logger)
+	sig, req, err := readJSONRequest(r, ar.logger)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -80,11 +81,12 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 
 func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) error {
 	// Try to read the request
-	var req OperatorInfoRequest
-	sig, err := readJSONRequest(w, r, (*CreateCredentialRequest)(&req), ar.logger)
+	sig, credReq, err := readJSONRequest(r, ar.logger)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
+
+	req := (*OperatorInfoRequest)(credReq)
 
 	// Get operator info
 	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), *sig, req.operatorType)
@@ -130,6 +132,15 @@ func (ar *apiRouter) wrapHandler(h func(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func MaxBytesReaderMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// Limit the size of the request body to 2 KB
+		r.Body = http.MaxBytesReader(w, r.Body, 2048)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func NewAPIRouter(path string, svc *services.Service, origins []string, logger *zap.Logger) *mux.Router {
 	// Create router.
 	ah := &apiRouter{
@@ -138,6 +149,9 @@ func NewAPIRouter(path string, svc *services.Service, origins []string, logger *
 	}
 	r := mux.NewRouter()
 	sr := r.PathPrefix(path).Subrouter()
+
+	// Enforce request byte limits
+	sr.Use(MaxBytesReaderMiddleware)
 
 	// Register handlers.
 	allowedMethods := []string{"GET", "POST", "OPTIONS"}
