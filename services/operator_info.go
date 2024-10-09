@@ -47,21 +47,17 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		}
 	}
 
-	// Return empty if no cred events found
-	if credCount == 0 {
-		s.logger.Info(
-			"No creds found for operator",
-			zap.String("nodeID", nodeID.String()),
-		)
-		return &OperatorInfo{[]int64{}}, nil
-	}
-
 	s.logger.Info(
 		"Retrieved operator info",
 		zap.String("nodeID", nodeID.String()),
 		zap.String("operatorType", ot.String()),
 	)
 	s.m.Counter("retrieved_operator_info").Inc()
+
+	// Return empty if no cred events found
+	if credCount == 0 {
+		return &OperatorInfo{[]int64{}}, nil
+	}
 
 	return &OperatorInfo{CredentialEvents: events}, nil
 }
