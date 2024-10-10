@@ -32,7 +32,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 	defer rows.Close()
 
 	// Parse credential events
-	var events []int64
+	var events = []int64{}
 	var credCount int64 = 0
 	for rows.Next() {
 		row_timestamp := int64(0)
@@ -53,11 +53,6 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		zap.String("operatorType", ot.String()),
 	)
 	s.m.Counter("retrieved_operator_info").Inc()
-
-	// Return empty if no cred events found
-	if credCount == 0 {
-		return &OperatorInfo{[]int64{}}, nil
-	}
 
 	return &OperatorInfo{CredentialEvents: events}, nil
 }
