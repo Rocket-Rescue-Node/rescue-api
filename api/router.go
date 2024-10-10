@@ -94,12 +94,7 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 		return writeJSONError(w, err)
 	}
 
-	// No cred events found
-	if len(operatorInfo.CredentialEvents) == 0 {
-		return writeJSONResponse(w, http.StatusNotFound, operatorInfo, "")
-	}
-
-	// Cred events found
+	// Cred events retrieved
 	ar.logger.Info("Retrieved operator info",
 		zap.String("nodeID", req.Address),
 		zap.Int("operator_type", int(req.operatorType)),

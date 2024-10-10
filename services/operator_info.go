@@ -32,7 +32,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 	defer rows.Close()
 
 	// Parse credential events
-	var events []int64
+	var events = []int64{}
 	var credCount int64 = 0
 	for rows.Next() {
 		row_timestamp := int64(0)
@@ -45,15 +45,6 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.Operato
 		if credCount == credsQuota(ot) {
 			break
 		}
-	}
-
-	// Return empty if no cred events found
-	if credCount == 0 {
-		s.logger.Info(
-			"No creds found for operator",
-			zap.String("nodeID", nodeID.String()),
-		)
-		return &OperatorInfo{[]int64{}}, nil
 	}
 
 	s.logger.Info(
