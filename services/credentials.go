@@ -88,8 +88,8 @@ func AuthValidityWindow(ot credentials.OperatorType) time.Duration {
 func GetQuotaJSON(ot credentials.OperatorType) (json.RawMessage, error) {
 	quotaData := map[string]interface{}{
 		"count":              uint(credsQuota(ot)),
-		"window":             credsQuotaWindow(ot),
-		"authValidityWindow": AuthValidityWindow(ot),
+		"window":             int64(credsQuotaWindow(ot).Seconds()),
+		"authValidityWindow": int64(AuthValidityWindow(ot).Seconds()),
 	}
 
 	quotaJson, err := json.Marshal(quotaData)
