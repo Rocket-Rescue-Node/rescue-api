@@ -350,7 +350,7 @@ func TestGetQuotaJson(t *testing.T) {
 		t.Fatalf("Error parsing window from quota json")
 	}
 	window := int64(fWindow)
-	if window != int64(credsQuotaWindow(pb.OperatorType_OT_ROCKETPOOL)) {
+	if window != int64(credsQuotaWindow(pb.OperatorType_OT_ROCKETPOOL).Seconds()) {
 		t.Fatalf("Incorrect quota window. Expected %d, got %d", int64(credsQuotaWindow(pb.OperatorType_OT_ROCKETPOOL)), window)
 	}
 
@@ -360,7 +360,7 @@ func TestGetQuotaJson(t *testing.T) {
 	if !ok {
 		t.Fatalf("Error parsing authValidityWindow from quota json")
 	}
-	if authValidityWindow != int64(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL)) {
+	if authValidityWindow != int64(AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL).Seconds()) {
 		t.Fatalf("Incorrect quota authValidityWindow. Expected %d,  got %d", AuthValidityWindow(pb.OperatorType_OT_ROCKETPOOL), authValidityWindow)
 	}
 }
