@@ -109,23 +109,27 @@ func TestGetOperatorInfo(t *testing.T) {
 		if len(info.CredentialEvents) != i+1 {
 			t.Fatalf("Incorrect credential event count. Expected %d, got %d", i+1, len(info.CredentialEvents))
 		}
-		if prevInfo.CredentialEvents[len(prevInfo.CredentialEvents)-1] == info.CredentialEvents[len(info.CredentialEvents)-1] {
+		if prevInfo.CredentialEvents[0] == info.CredentialEvents[0] {
 			t.Fatalf("Operator info should not match (%d == %d)",
-				prevInfo.CredentialEvents[len(prevInfo.CredentialEvents)-1], info.CredentialEvents[len(info.CredentialEvents)-1])
+				prevInfo.CredentialEvents[0], info.CredentialEvents[0])
 		}
 		prevInfo = info
 	}
+	i2 := prevInfo
 
 	// Advance the clock just enough so that the oldest credential is not within
 	// credsQuotaWindow anymore. This should decrease cred event count by 1.
-	i1QuotaExpiry := time.Unix(i1.CredentialEvents[len(i1.CredentialEvents)-1], 0).Add(quotas[pb.OperatorType_OT_ROCKETPOOL].window)
-	clock.Advance(i1QuotaExpiry.Sub(clock.Now()))
+	if len(i2.CredentialEvents) != 4 {
+		t.Fatalf("Started with incorrect cred count. Expected 4, got %d", len(i2.CredentialEvents))
+	}
+	i2InfoQuotaExpiry := time.Unix(i2.CredentialEvents[len(i2.CredentialEvents)-1], 0).Add(quotas[pb.OperatorType_OT_ROCKETPOOL].window)
+	clock.Advance(i2InfoQuotaExpiry.Sub(clock.Now()))
 	svc.nodes.LastUpdated = svc.clock.Now()
-	info, err := getOperatorInfo(svc, node)
+	i3, err := getOperatorInfo(svc, node)
 	if err != nil {
 		t.Fatalf("Could not get operator info: %v", err)
 	}
-	if len(info.CredentialEvents) != 3 {
-		t.Fatalf("Incorrect credential event count. Expected 3, got %d", len(info.CredentialEvents))
+	if len(i3.CredentialEvents) != 3 {
+		t.Fatalf("Incorrect credential event count. Expected 3, got %d", len(i3.CredentialEvents))
 	}
 }
