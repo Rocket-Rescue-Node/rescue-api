@@ -28,10 +28,11 @@ func (br *decodingError) Error() string {
 }
 
 type CreateCredentialRequest struct {
-	Address string `json:"address"`
-	Msg     string `json:"msg"`
-	Sig     string `json:"sig"`
-	Version string `json:"version"`
+	Address  string `json:"address"`
+	Msg      string `json:"msg"`
+	Sig      string `json:"sig"`
+	Version  string `json:"version"`
+	DataHash string `json:"dataHash"`
 
 	operatorType credentials.OperatorType `json:"-"`
 }

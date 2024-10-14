@@ -6,6 +6,7 @@ import (
 	"time"
 
 	proxy "github.com/Rocket-Rescue-Node/rescue-proxy/pb"
+	"github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -112,6 +113,25 @@ func (c *RescueProxyAPIClient) GetWithdrawalAddresses() ([][]byte, error) {
 		return nil, err
 	}
 	return r.GetWithdrawalAddresses(), nil
+}
+
+func (c *RescueProxyAPIClient) ValidateEIP1271(dataHash *common.Hash, signature *[]byte, address *common.Address) (bool, error) {
+	// Connect if not yet connected.
+	if err := c.ensureConnection(); err != nil {
+		return false, err
+	}
+	c.logger.Debug("requesting eip1271 validation")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := c.client.ValidateEIP1271(ctx, &proxy.ValidateEIP1271Request{
+		DataHash:  dataHash.Bytes(),
+		Signature: *signature,
+		Address:   address.Bytes(),
+	})
+	if err != nil {
+		return false, err
+	}
+	return r.GetValid(), nil
 }
 
 func (c *RescueProxyAPIClient) Close() error {

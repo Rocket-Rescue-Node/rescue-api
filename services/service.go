@@ -3,11 +3,14 @@ package services
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"regexp"
 	"time"
 
 	creds "github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
+	"github.com/Rocket-Rescue-Node/rescue-api/external"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
 	"github.com/Rocket-Rescue-Node/rescue-api/util"
@@ -99,6 +102,8 @@ type Service struct {
 	clock clockwork.Clock
 
 	enableSoloValidators bool
+
+	rescueProxyClient *external.RescueProxyAPIClient
 }
 
 func NewService(config *ServiceConfig) *Service {
@@ -318,16 +323,32 @@ func (s *Service) checkNodeAuthorization(nodeID *models.NodeID, ot creds.Operato
 	return nil
 }
 
-func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, ot pb.OperatorType) (*common.Address, error) {
+func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, dataHash *common.Hash, address *common.Address, ot pb.OperatorType) (*common.Address, error) {
 	// Check request age
 	if err := s.checkRequestAge(msg); err != nil {
 		return nil, err
 	}
 
-	// Recover nodeID
-	nodeID, err := s.getNodeID(msg, sig)
-	if err != nil {
-		return nil, err
+	var nodeID *common.Address
+	var err error
+
+	if len(dataHash) > 0 {
+		// EIP-1271 signature
+		nodeID := address
+
+		valid, err := s.rescueProxyClient.ValidateEIP1271(dataHash, sig, nodeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate EIP-1271 signature: %w", err)
+		}
+		if !valid {
+			return nil, errors.New("invalid EIP-1271 signature")
+		}
+	} else {
+		// EOA signature
+		nodeID, err = s.getNodeID(msg, sig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Check node authz
