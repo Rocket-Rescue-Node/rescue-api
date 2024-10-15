@@ -32,7 +32,6 @@ func readJSONRequest(r *http.Request, logger *zap.Logger) (*[]byte, *common.Addr
 		zap.String("msg", out.Msg),
 		zap.String("sig", out.Sig),
 		zap.String("version", out.Version),
-		zap.String("dataHash", out.DataHash),
 		zap.Int("operator_type", int(out.operatorType)),
 	)
 
