@@ -103,7 +103,7 @@ func GetQuotaJSON(ot credentials.OperatorType) (json.RawMessage, error) {
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.
 // This method will retry if creating a credential fails.
-func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, dataHash common.Hash, address common.Address, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
+func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, address common.Address, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var cred *models.AuthenticatedCredential
 	var err error
 
@@ -111,7 +111,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, dataHash com
 	s.m.Counter("create_credential_with_retry").Inc()
 	for try = range dbTryDelayMs {
 		// Try to create the credential.
-		if cred, err = s.CreateCredential(msg, sig, dataHash, address, ot); err == nil {
+		if cred, err = s.CreateCredential(msg, sig, address, ot); err == nil {
 			break
 		}
 
@@ -149,11 +149,11 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, dataHash com
 
 // Creates a new credential for a node. If a valid credential exists, it will be returned instead.
 // No retry logic is implemented, so it is up to the caller to retry if it does not succeed.
-func (s *Service) CreateCredential(msg []byte, sig []byte, dataHash common.Hash, address common.Address, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
+func (s *Service) CreateCredential(msg []byte, sig []byte, address common.Address, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
 	// Validate request
-	nodeID, err := s.validateSignedRequest(&msg, &sig, &dataHash, &address, ot)
+	nodeID, err := s.validateSignedRequest(&msg, &sig, &address, ot)
 	if err != nil {
 		return nil, err
 	}

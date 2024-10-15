@@ -15,6 +15,7 @@ import (
 	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
 	"github.com/Rocket-Rescue-Node/rescue-api/util"
 	"github.com/Rocket-Rescue-Node/rescue-proxy/metrics"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
@@ -323,40 +324,38 @@ func (s *Service) checkNodeAuthorization(nodeID *models.NodeID, ot creds.Operato
 	return nil
 }
 
-func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, dataHash *common.Hash, address *common.Address, ot pb.OperatorType) (*common.Address, error) {
+func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, address *common.Address, ot pb.OperatorType) (*common.Address, error) {
 	// Check request age
 	if err := s.checkRequestAge(msg); err != nil {
 		return nil, err
 	}
 
-	var nodeID *common.Address
-	var err error
-
-	if len(dataHash) > 0 {
-		// EIP-1271 signature
-		nodeID := address
-
-		valid, err := s.rescueProxyClient.ValidateEIP1271(dataHash, sig, nodeID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate EIP-1271 signature: %w", err)
-		}
-		if !valid {
-			return nil, errors.New("invalid EIP-1271 signature")
-		}
-	} else {
-		// EOA signature
-		nodeID, err = s.getNodeID(msg, sig)
-		if err != nil {
-			return nil, err
+	// First, assume EOA signature
+	nodeID, err := s.getNodeID(msg, sig)
+	if err == nil {
+		// If getNodeID succeeds, check authorization
+		if err := s.checkNodeAuthorization(nodeID, ot); err == nil {
+			// If authorization check passes, we're done
+			return nodeID, nil
 		}
 	}
 
-	// Check node authz
-	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
+	// If EOA signature assumption fails, try EIP-1271 validation
+	dataHash := common.BytesToHash(accounts.TextHash(*msg))
+	valid, err := s.rescueProxyClient.ValidateEIP1271(&dataHash, sig, address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate EIP-1271 signature: %w", err)
+	}
+	if !valid {
+		return nil, errors.New("invalid signature: both EOA and EIP-1271 validation failed")
+	}
+
+	// If EIP-1271 signature is valid, check authorization
+	if err := s.checkNodeAuthorization(address, ot); err != nil {
 		return nil, err
 	}
 
-	return nodeID, nil
+	return address, nil
 }
 
 func (s *Service) Deinit() {

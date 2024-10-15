@@ -13,11 +13,11 @@ type OperatorInfo struct {
 	CredentialEvents []int64 `json:"credentialEvents"`
 }
 
-func (s *Service) GetOperatorInfo(msg []byte, sig []byte, dataHash common.Hash, address common.Address, ot credentials.OperatorType) (*OperatorInfo, error) {
+func (s *Service) GetOperatorInfo(msg []byte, sig []byte, address common.Address, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
 	// Validate request
-	nodeID, err := s.validateSignedRequest(&msg, &sig, &dataHash, &address, ot)
+	nodeID, err := s.validateSignedRequest(&msg, &sig, &address, ot)
 	if err != nil {
 		return nil, err
 	}
