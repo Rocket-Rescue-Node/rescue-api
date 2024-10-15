@@ -74,6 +74,9 @@ type ServiceConfig struct {
 	Logger               *zap.Logger
 	Clock                clockwork.Clock
 	EnableSoloValidators bool
+
+	RescueProxyAddr       string
+	RescueProxySecureGRPC bool
 }
 
 // Services contain business logic, are responsible for interacting with the database,
@@ -118,6 +121,11 @@ func NewService(config *ServiceConfig) *Service {
 		logger:               config.Logger,
 		clock:                config.Clock,
 		enableSoloValidators: config.EnableSoloValidators,
+		rescueProxyClient: external.NewRescueProxyAPIClient(
+			config.Logger,
+			config.RescueProxyAddr,
+			config.RescueProxySecureGRPC,
+		),
 	}
 }
 
