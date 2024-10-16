@@ -12,6 +12,7 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/util"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -25,7 +26,7 @@ func createValidCredential(svc *Service, node *util.Wallet) (*credentials.Authen
 		return nil, fmt.Errorf("Could not sign message: %v", err)
 	}
 	// Create credential.
-	cred, err := svc.CreateCredentialWithRetry(msg, sig, pb.OperatorType_OT_ROCKETPOOL)
+	cred, err := svc.CreateCredentialWithRetry(msg, sig, common.Address{}, pb.OperatorType_OT_ROCKETPOOL)
 	if err != nil {
 		return nil, err
 	}
@@ -235,20 +236,20 @@ func TestCreateCredentialRequests(t *testing.T) {
 	}{
 		{"valid", msg, sig, pb.OperatorType_OT_ROCKETPOOL, nil},
 		{"valid_solo", msg, soloSig, pb.OperatorType_OT_SOLO, nil},
-		{"solo_masquerading_rp", msg, soloSig, pb.OperatorType_OT_ROCKETPOOL, &AuthorizationError{}},
-		{"rp_masquerading_solo", msg, sig, pb.OperatorType_OT_SOLO, &AuthorizationError{}},
+		{"solo_masquerading_rp", msg, soloSig, pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
+		{"rp_masquerading_solo", msg, sig, pb.OperatorType_OT_SOLO, &AuthenticationError{}},
 		{"malformed_signature", msg, []byte("invalid"), pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
 		{"invalid_signature", msg, invalidSig, pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
 		{"malformed_message", badMsg, badMsgSig, pb.OperatorType_OT_ROCKETPOOL, &ValidationError{}},
 		{"expired_timestamp", oldMsg, oldMsgSig, pb.OperatorType_OT_ROCKETPOOL, &ValidationError{}},
 		{"empty_message", []byte{}, sig, pb.OperatorType_OT_ROCKETPOOL, &ValidationError{}},
 		{"empty_signature", msg, []byte{}, pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
-		{"unknown_node", otherMsg, otherSig, pb.OperatorType_OT_ROCKETPOOL, &AuthorizationError{}},
+		{"unknown_node", otherMsg, otherSig, pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
 	}
 
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
-			_, err := svc.CreateCredentialWithRetry(d.msg, d.sig, d.ot)
+			_, err := svc.CreateCredentialWithRetry(d.msg, d.sig, common.Address{}, d.ot)
 			if !errors.Is(err, d.err) {
 				t.Fatalf("Expected error %v, got %v", d.err, err)
 			}
@@ -299,7 +300,7 @@ func TestCreateCredentialConcurrent(t *testing.T) {
 				errChan <- err
 				return
 			}
-			_, err = svc.CreateCredentialWithRetry(msg, sig, pb.OperatorType_OT_ROCKETPOOL)
+			_, err = svc.CreateCredentialWithRetry(msg, sig, common.Address{}, pb.OperatorType_OT_ROCKETPOOL)
 			if err != nil {
 				t.Errorf("Could not create credential %d: %v", i, err)
 				errChan <- err

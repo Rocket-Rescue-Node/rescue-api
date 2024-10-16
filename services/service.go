@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -352,10 +351,10 @@ func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, address *commo
 	dataHash := common.BytesToHash(accounts.TextHash(*msg))
 	valid, err := s.rescueProxyClient.ValidateEIP1271(&dataHash, sig, address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to validate EIP-1271 signature: %w", err)
+		return nil, &AuthenticationError{fmt.Sprintf("failed to validate EIP-1271 signature: %v", err)}
 	}
 	if !valid {
-		return nil, errors.New("invalid signature: both EOA and EIP-1271 validation failed")
+		return nil, &AuthenticationError{"invalid signature: both EOA and EIP-1271 validation failed"}
 	}
 
 	// If EIP-1271 signature is valid, check authorization
