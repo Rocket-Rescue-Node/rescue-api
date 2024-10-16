@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
@@ -17,12 +18,12 @@ type apiRouter struct {
 	logger *zap.Logger
 }
 
-func readJSONRequest(r *http.Request, logger *zap.Logger) (*[]byte, *CreateCredentialRequest, error) {
+func readJSONRequest(r *http.Request, logger *zap.Logger) (*[]byte, *common.Address, *CreateCredentialRequest, error) {
 	out := new(CreateCredentialRequest)
 
 	// Validate the request body
 	if err := validateJSONRequest(r, out); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	logger.Info("Got valid request",
@@ -38,21 +39,24 @@ func readJSONRequest(r *http.Request, logger *zap.Logger) (*[]byte, *CreateCrede
 	sig, err := hex.DecodeString(strings.TrimPrefix(out.Sig, "0x"))
 	if err != nil {
 		msg := "invalid signature"
-		return nil, nil, &decodingError{status: http.StatusBadRequest, msg: msg}
+		return nil, nil, nil, &decodingError{status: http.StatusBadRequest, msg: msg}
 	}
 
-	return &sig, out, nil
+	// Convert out.Address to common.Address
+	address := common.HexToAddress(out.Address)
+
+	return &sig, &address, out, nil
 }
 
 func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
 	// Try to read the request
-	sig, req, err := readJSONRequest(r, ar.logger)
+	sig, address, req, err := readJSONRequest(r, ar.logger)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
 
 	// Create the credential
-	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), *sig, req.operatorType)
+	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), *sig, *address, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -81,7 +85,7 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 
 func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) error {
 	// Try to read the request
-	sig, credReq, err := readJSONRequest(r, ar.logger)
+	sig, address, credReq, err := readJSONRequest(r, ar.logger)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -89,7 +93,7 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 	req := (*OperatorInfoRequest)(credReq)
 
 	// Get operator info
-	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), *sig, req.operatorType)
+	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), *sig, *address, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
