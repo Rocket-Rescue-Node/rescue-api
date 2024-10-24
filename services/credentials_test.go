@@ -246,6 +246,7 @@ func TestCreateCredentialRequests(t *testing.T) {
 		{"empty_message", []byte{}, sig, *node.Address, pb.OperatorType_OT_ROCKETPOOL, &ValidationError{}},
 		{"empty_signature", msg, []byte{}, *node.Address, pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
 		{"unknown_node", otherMsg, otherSig, *otherNode.Address, pb.OperatorType_OT_ROCKETPOOL, &AuthorizationError{}},
+		{"mismatched_address", msg, sig, *otherNode.Address, pb.OperatorType_OT_ROCKETPOOL, &AuthenticationError{}},
 	}
 
 	for _, d := range data {
