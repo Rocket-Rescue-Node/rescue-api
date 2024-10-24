@@ -11,6 +11,7 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/mattn/go-sqlite3"
 
@@ -102,7 +103,7 @@ func GetQuotaJSON(ot credentials.OperatorType) (json.RawMessage, error) {
 
 // Creates a new credential for a node. If a valid credential already exists, it will be returned instead.
 // This method will retry if creating a credential fails.
-func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
+func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, expectedNodeId common.Address, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var cred *models.AuthenticatedCredential
 	var err error
 
@@ -110,7 +111,7 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 	s.m.Counter("create_credential_with_retry").Inc()
 	for try = range dbTryDelayMs {
 		// Try to create the credential.
-		if cred, err = s.CreateCredential(msg, sig, ot); err == nil {
+		if cred, err = s.CreateCredential(msg, sig, expectedNodeId, ot); err == nil {
 			break
 		}
 
@@ -148,11 +149,11 @@ func (s *Service) CreateCredentialWithRetry(msg []byte, sig []byte, ot credentia
 
 // Creates a new credential for a node. If a valid credential exists, it will be returned instead.
 // No retry logic is implemented, so it is up to the caller to retry if it does not succeed.
-func (s *Service) CreateCredential(msg []byte, sig []byte, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
+func (s *Service) CreateCredential(msg []byte, sig []byte, expectedNodeId common.Address, ot credentials.OperatorType) (*models.AuthenticatedCredential, error) {
 	var err error
 
 	// Validate request
-	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
+	nodeID, err := s.validateSignedRequest(&msg, &sig, expectedNodeId, ot)
 	if err != nil {
 		return nil, err
 	}
