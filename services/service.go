@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -318,7 +319,7 @@ func (s *Service) checkNodeAuthorization(nodeID *models.NodeID, ot creds.Operato
 	return nil
 }
 
-func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, ot pb.OperatorType) (*common.Address, error) {
+func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, expectedNodeId common.Address, ot pb.OperatorType) (*common.Address, error) {
 	// Check request age
 	if err := s.checkRequestAge(msg); err != nil {
 		return nil, err
@@ -328,6 +329,11 @@ func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, ot pb.Operator
 	nodeID, err := s.getNodeID(msg, sig)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if the nodeID matches the expected nodeID
+	if *nodeID != expectedNodeId {
+		return nil, &AuthenticationError{fmt.Sprintf("provided node id (%s) did not match address (%s) which signed the message", expectedNodeId.Hex(), nodeID.Hex())}
 	}
 
 	// Check node authz

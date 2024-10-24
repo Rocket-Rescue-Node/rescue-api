@@ -5,6 +5,7 @@ import (
 
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
+	"github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )
 
@@ -12,11 +13,11 @@ type OperatorInfo struct {
 	CredentialEvents []int64 `json:"credentialEvents"`
 }
 
-func (s *Service) GetOperatorInfo(msg []byte, sig []byte, ot credentials.OperatorType) (*OperatorInfo, error) {
+func (s *Service) GetOperatorInfo(msg []byte, sig []byte, expectedNodeId common.Address, ot credentials.OperatorType) (*OperatorInfo, error) {
 	var err error
 
 	// Validate request
-	nodeID, err := s.validateSignedRequest(&msg, &sig, ot)
+	nodeID, err := s.validateSignedRequest(&msg, &sig, expectedNodeId, ot)
 	if err != nil {
 		return nil, err
 	}
