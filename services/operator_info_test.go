@@ -21,7 +21,7 @@ func getOperatorInfo(svc *Service, node *util.Wallet) (*OperatorInfo, error) {
 	}
 
 	// Get operator info
-	info, err := svc.GetOperatorInfo(msg, sig, pb.OperatorType_OT_ROCKETPOOL)
+	info, err := svc.GetOperatorInfo(msg, sig, *node.Address, pb.OperatorType_OT_ROCKETPOOL)
 	if err != nil {
 		return nil, err
 	}
