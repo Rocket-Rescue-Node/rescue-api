@@ -17,7 +17,7 @@ func (s *Service) GetOperatorInfo(msg []byte, sig []byte, expectedNodeId common.
 	var err error
 
 	// Validate request
-	nodeID, err := s.validateSignedRequest(&msg, &sig, expectedNodeId, ot)
+	nodeID, err := s.validateSignedRequest(msg, sig, expectedNodeId, ot)
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type response struct {
@@ -28,12 +29,41 @@ func (br *decodingError) Error() string {
 }
 
 type CreateCredentialRequest struct {
-	Address string `json:"address"`
-	Msg     string `json:"msg"`
-	Sig     string `json:"sig"`
-	Version string `json:"version"`
+	Address common.Address `json:"address"`
+	Msg     []byte         `json:"msg"`
+	Sig     []byte         `json:"sig"`
+	Version string         `json:"version"`
 
 	operatorType credentials.OperatorType `json:"-"`
+}
+
+func (c *CreateCredentialRequest) UnmarshalJSON(data []byte) error {
+	type Alias CreateCredentialRequest
+	aux := &struct {
+		Address string `json:"address"`
+		Msg     string `json:"msg"`
+		Sig     string `json:"sig"`
+
+		// Populates the `Version` field
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Convert Address
+	c.Address = common.HexToAddress(aux.Address)
+
+	// Convert Msg
+	c.Msg = []byte(aux.Msg)
+
+	// Convert Sig
+	c.Sig = []byte(aux.Sig)
+
+	return nil
 }
 
 type CreateCredentialResponse struct {

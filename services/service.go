@@ -9,10 +9,12 @@ import (
 
 	creds "github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
+	"github.com/Rocket-Rescue-Node/rescue-api/external"
 	"github.com/Rocket-Rescue-Node/rescue-api/models"
 	authz "github.com/Rocket-Rescue-Node/rescue-api/models/authorization"
 	"github.com/Rocket-Rescue-Node/rescue-api/util"
 	"github.com/Rocket-Rescue-Node/rescue-proxy/metrics"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
@@ -71,6 +73,9 @@ type ServiceConfig struct {
 	Logger               *zap.Logger
 	Clock                clockwork.Clock
 	EnableSoloValidators bool
+
+	RescueProxyAddr       string
+	RescueProxySecureGRPC bool
 }
 
 // Services contain business logic, are responsible for interacting with the database,
@@ -100,6 +105,8 @@ type Service struct {
 	clock clockwork.Clock
 
 	enableSoloValidators bool
+
+	rescueProxyClient *external.RescueProxyAPIClient
 }
 
 func NewService(config *ServiceConfig) *Service {
@@ -113,6 +120,11 @@ func NewService(config *ServiceConfig) *Service {
 		logger:               config.Logger,
 		clock:                config.Clock,
 		enableSoloValidators: config.EnableSoloValidators,
+		rescueProxyClient: external.NewRescueProxyAPIClient(
+			config.Logger,
+			config.RescueProxyAddr,
+			config.RescueProxySecureGRPC,
+		),
 	}
 }
 
@@ -319,29 +331,38 @@ func (s *Service) checkNodeAuthorization(nodeID *models.NodeID, ot creds.Operato
 	return nil
 }
 
-func (s *Service) validateSignedRequest(msg *[]byte, sig *[]byte, expectedNodeId common.Address, ot pb.OperatorType) (*common.Address, error) {
+func (s *Service) validateSignedRequest(msg []byte, sig []byte, expectedNodeId common.Address, ot pb.OperatorType) (common.Address, error) {
 	// Check request age
-	if err := s.checkRequestAge(msg); err != nil {
-		return nil, err
+	if err := s.checkRequestAge(&msg); err != nil {
+		return common.Address{}, err
 	}
 
-	// Recover nodeID
-	nodeID, err := s.getNodeID(msg, sig)
+	// First, assume EOA signature
+	recoveredNodeId, err := s.getNodeID(&msg, &sig)
 	if err != nil {
-		return nil, err
+		return common.Address{}, err
 	}
 
 	// Check if the nodeID matches the expected nodeID
-	if *nodeID != expectedNodeId {
-		return nil, &AuthenticationError{fmt.Sprintf("provided node id (%s) did not match address (%s) which signed the message", expectedNodeId.Hex(), nodeID.Hex())}
+	if *recoveredNodeId != expectedNodeId {
+		// if not, we probably have an EIP-1271 signature
+		dataHash := common.BytesToHash(accounts.TextHash(msg))
+		valid, err := s.rescueProxyClient.ValidateEIP1271(&dataHash, &sig, &expectedNodeId)
+		if err != nil {
+			return common.Address{}, &AuthenticationError{fmt.Sprintf("failed to validate EIP-1271 signature: %v", err)}
+		}
+		if !valid {
+			return common.Address{}, &AuthenticationError{"invalid signature: both EOA and EIP-1271 validation failed"}
+		}
 	}
 
-	// Check node authz
-	if err := s.checkNodeAuthorization(nodeID, ot); err != nil {
-		return nil, err
+	// If getNodeID succeeds, check authorization
+	if err := s.checkNodeAuthorization(&expectedNodeId, ot); err != nil {
+		// If authorization check passes, we're done
+		return common.Address{}, err
 	}
 
-	return nodeID, nil
+	return expectedNodeId, nil
 }
 
 func (s *Service) Deinit() {

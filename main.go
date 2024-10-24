@@ -122,6 +122,9 @@ func main() {
 		Logger:               logger,
 		Clock:                clock,
 		EnableSoloValidators: cfg.EnableSoloValidators,
+
+		RescueProxyAddr:       cfg.RescueProxyAPIAddr,
+		RescueProxySecureGRPC: cfg.SecureGRPC,
 	}
 	svc := services.NewService(svcCfg)
 	if err := svc.Init(); err != nil {
