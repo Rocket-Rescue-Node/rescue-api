@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials"
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type response struct {
@@ -28,12 +31,45 @@ func (br *decodingError) Error() string {
 }
 
 type CreateCredentialRequest struct {
-	Address string `json:"address"`
-	Msg     string `json:"msg"`
-	Sig     string `json:"sig"`
-	Version string `json:"version"`
+	Address common.Address `json:"address"`
+	Msg     []byte         `json:"msg"`
+	Sig     []byte         `json:"sig"`
+	Version string         `json:"version"`
 
 	operatorType credentials.OperatorType `json:"-"`
+}
+
+func (c *CreateCredentialRequest) UnmarshalJSON(data []byte) error {
+	type Alias CreateCredentialRequest
+	aux := &struct {
+		Address string `json:"address"`
+		Msg     string `json:"msg"`
+		Sig     string `json:"sig"`
+
+		// Populates the `Version` field
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Convert Address
+	c.Address = common.HexToAddress(aux.Address)
+
+	// Convert Msg
+	c.Msg = []byte(aux.Msg)
+
+	// Convert Sig
+	var err error
+	c.Sig, err = hexutil.Decode(aux.Sig)
+	if err != nil {
+		return fmt.Errorf("invalid signature hex: %v", err)
+	}
+
+	return nil
 }
 
 type CreateCredentialResponse struct {

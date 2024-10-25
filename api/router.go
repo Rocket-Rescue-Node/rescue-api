@@ -3,11 +3,10 @@ package api
 import (
 	"encoding/hex"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
@@ -18,42 +17,35 @@ type apiRouter struct {
 	logger *zap.Logger
 }
 
-func readJSONRequest(r *http.Request, logger *zap.Logger) (*[]byte, *CreateCredentialRequest, error) {
+func (ar *apiRouter) readJSONRequest(r *http.Request) (*CreateCredentialRequest, error) {
 	out := new(CreateCredentialRequest)
 
 	// Validate the request body
 	if err := validateJSONRequest(r, out); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	logger.Info("Got valid request",
+	ar.logger.Info("Got valid request",
 		zap.String("endpoint", r.URL.Path),
-		zap.String("address", out.Address),
-		zap.String("msg", out.Msg),
-		zap.String("sig", out.Sig),
+		zap.String("address", out.Address.Hex()),
+		zap.String("msg", string(out.Msg)),
+		zap.String("sig", hexutil.Encode(out.Sig)),
 		zap.String("version", out.Version),
 		zap.Int("operator_type", int(out.operatorType)),
 	)
 
-	// Validate the message signature
-	sig, err := hex.DecodeString(strings.TrimPrefix(out.Sig, "0x"))
-	if err != nil {
-		msg := "invalid signature"
-		return nil, nil, &decodingError{status: http.StatusBadRequest, msg: msg}
-	}
-
-	return &sig, out, nil
+	return out, nil
 }
 
 func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) error {
 	// Try to read the request
-	sig, req, err := readJSONRequest(r, ar.logger)
+	req, err := ar.readJSONRequest(r)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
 
 	// Create the credential
-	cred, err := ar.svc.CreateCredentialWithRetry([]byte(req.Msg), *sig, common.HexToAddress(req.Address), req.operatorType)
+	cred, err := ar.svc.CreateCredentialWithRetry(req.Msg, req.Sig, req.Address, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -82,7 +74,7 @@ func (ar *apiRouter) CreateCredential(w http.ResponseWriter, r *http.Request) er
 
 func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) error {
 	// Try to read the request
-	sig, credReq, err := readJSONRequest(r, ar.logger)
+	credReq, err := ar.readJSONRequest(r)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
@@ -90,14 +82,14 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 	req := (*OperatorInfoRequest)(credReq)
 
 	// Get operator info
-	operatorInfo, err := ar.svc.GetOperatorInfo([]byte(req.Msg), *sig, common.HexToAddress(req.Address), req.operatorType)
+	operatorInfo, err := ar.svc.GetOperatorInfo(req.Msg, req.Sig, req.Address, req.operatorType)
 	if err != nil {
 		return writeJSONError(w, err)
 	}
 
 	// Cred events retrieved
 	ar.logger.Info("Retrieved operator info",
-		zap.String("nodeID", req.Address),
+		zap.String("nodeID", req.Address.Hex()),
 		zap.Int("operator_type", int(req.operatorType)),
 	)
 
