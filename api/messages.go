@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/Rocket-Rescue-Node/credentials/pb"
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type response struct {
@@ -61,7 +63,11 @@ func (c *CreateCredentialRequest) UnmarshalJSON(data []byte) error {
 	c.Msg = []byte(aux.Msg)
 
 	// Convert Sig
-	c.Sig = []byte(aux.Sig)
+	var err error
+	c.Sig, err = hexutil.Decode(aux.Sig)
+	if err != nil {
+		return fmt.Errorf("invalid signature hex: %v", err)
+	}
 
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Rocket-Rescue-Node/rescue-api/services"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
@@ -28,7 +29,7 @@ func (ar *apiRouter) readJSONRequest(r *http.Request) (*CreateCredentialRequest,
 		zap.String("endpoint", r.URL.Path),
 		zap.String("address", out.Address.Hex()),
 		zap.String("msg", string(out.Msg)),
-		zap.String("sig", hex.EncodeToString(out.Sig)),
+		zap.String("sig", hexutil.Encode(out.Sig)),
 		zap.String("version", out.Version),
 		zap.Int("operator_type", int(out.operatorType)),
 	)
