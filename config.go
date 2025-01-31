@@ -54,7 +54,7 @@ Use 'dd if=/dev/urandom bs=4 count=8 | base64' if you need to generate a new sec
 	proxyAPIAddr := flag.String("rescue-proxy-api-addr", "", "Address for the Rescue Proxy gRPC API")
 	rocketscanAPIURL := flag.String("rocketscan-api-url", "", "URL for the Rocketscan REST API")
 	allowedOrigins := flag.String("allowed-origins", "http://localhost:8080", "Comma-separated list of allowed CORS origins")
-	secureGRPC := flag.Bool("secure-grpc", true, "Whether to enforce gRPC over TLS")
+	secureGRPC := flag.Bool("secure-grpc", true, "Whether to use gRPC over TLS")
 	debug := flag.Bool("debug", false, "Whether to enable verbose logging")
 	enableSoloValidators := flag.Bool("enable-solo-validators", true, "Whether or not to enable solo validator credentials")
 	flag.Parse()

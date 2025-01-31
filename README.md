@@ -27,21 +27,27 @@ make build
 ```
 Usage of ./rescue-api:
   -addr string
-        Address on which to listen to HTTP requests (default "0.0.0.0:8080")
+	Address on which to listen to HTTP requests (default "0.0.0.0:8080")
   -allowed-origins string
-        Comma-separated list of allowed CORS origins (default "localhost")
-  -auth-valid-for string
-        The duration after which a credential should be considered invalid, eg, 360h for 15 days (default "360h")
+	Comma-separated list of allowed CORS origins (default "http://localhost:8080")
   -db-path string
-        sqlite3 database path (default "db.sqlite3")
+	sqlite3 database path (default "db.sqlite3")
   -debug
-        Whether to enable verbose logging
+	Whether to enable verbose logging
+  -enable-solo-validators
+	Whether or not to enable solo validator credentials (default true)
   -hmac-secret string
-        The secret to use for HMAC (default "test-secret")
+	The secret to use for HMAC.
+	Value must be at least 32 bytes of entropy, base64-encoded.
+	Use 'dd if=/dev/urandom bs=4 count=8 | base64' if you need to generate a new secret.
+  -metrics-addr string
+	Address on which to listen for /metrics requests (default "0.0.0.0:9000")
   -rescue-proxy-api-addr string
-        Address for the Rescue Proxy gRPC API
+	Address for the Rescue Proxy gRPC API
   -rocketscan-api-url string
-        URL for the Rocketscan REST API
+	URL for the Rocketscan REST API
+  -secure-grpc
+	Whether to use gRPC over TLS (default true)
 ```
 
   * `-hmac-secret` must match the one used with the
