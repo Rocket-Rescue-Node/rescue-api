@@ -34,36 +34,23 @@ func NewRescueProxyAPIClient(logger *zap.Logger, address string, secure bool) *R
 func (c *RescueProxyAPIClient) connect() error {
 	var err error
 
-	// Try to connect to the Rescue Proxy API using TLS.
-	// An empty TLS config will use the system's root CAs.
-	tc := credentials.NewTLS(&tls.Config{})
-	if c.conn, err = grpc.NewClient(
-		c.address,
-		grpc.WithTransportCredentials(tc),
-	); err == nil {
-		c.client = proxy.NewApiClient(c.conn)
-		c.logger.Debug("connected to rescue-proxy with TLS", zap.String("address", c.address))
-		return nil
+	c.logger.Debug("connecting to rescue-proxy", zap.Bool("tls", c.secure))
+	var transportCredentials credentials.TransportCredentials
+	if !c.secure {
+		transportCredentials = insecure.NewCredentials()
+	} else {
+		// An empty TLS config will use the system's root CAs.
+		transportCredentials = credentials.NewTLS(&tls.Config{})
 	}
-
-	// If TLS fails, try falling back to insecure gRPC.
-	if c.secure {
-		c.logger.Debug("not attempting to connect to rescue-proxy without TLS, since insecure grpc is disallowed", zap.String("address", c.address))
-		return err
-	}
-
-	c.logger.Debug("attempting to connect to rescue-proxy without TLS, since insecure grpc is allowed", zap.String("address", c.address))
 
 	if c.conn, err = grpc.NewClient(
 		c.address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(transportCredentials),
 	); err != nil {
 		return err
 	}
-
-	c.logger.Debug("connected to rescue-proxy without TLS", zap.String("address", c.address))
-
 	c.client = proxy.NewApiClient(c.conn)
+	c.logger.Debug("connected to rescue-proxy", zap.String("address", c.address))
 	return nil
 }
 
