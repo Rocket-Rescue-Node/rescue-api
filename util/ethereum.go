@@ -2,6 +2,7 @@ package util
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -23,6 +24,9 @@ func RecoverAddressFromSignature(msg []byte, sig []byte) (*common.Address, error
 	if len(sig) != crypto.SignatureLength {
 		return nil, secp256k1.ErrInvalidSignatureLen
 	}
+
+	v := &sig[crypto.RecoveryIDOffset]
+
 	// According to the Ethereum Yellow Paper, the signature format must be
 	// [R || S || V], and V (the Recovery ID) must be 27 or 28. This was apparently
 	// inherited from Bitcoin.
@@ -30,14 +34,26 @@ func RecoverAddressFromSignature(msg []byte, sig []byte) (*common.Address, error
 	// References:
 	// - https://github.com/ethereum/go-ethereum/issues/19751#issuecomment-504900739
 	// - https://ethereum.github.io/yellowpaper/paper.pdf, page 22, Appendix E., (213)
-	sig[crypto.RecoveryIDOffset] -= 27
+	//
+	// Additionally, we've seen some wallets produce signatures with V=0 or 1.
+	// In those cases, we don't need to tweak the recovery ID before recovering the public key.
+	switch *v {
+	case 27, 28:
+		// Subtract 27 to get the actual recovery ID.
+		*v -= 27
+		// Restore V to its original value at the end of the function.
+		defer func() {
+			*v += 27
+		}()
+	case 0, 1:
+		// Do nothing.
+	default:
+		return nil, fmt.Errorf("invalid recovery ID: %d", *v)
+	}
 
 	// Recover the public key from the signature.
 	hash := accounts.TextHash(msg)
 	pubKey, err := crypto.SigToPub(hash, sig)
-
-	// Restore V to its original value.
-	sig[crypto.RecoveryIDOffset] += 27
 
 	if err != nil {
 		return nil, err
