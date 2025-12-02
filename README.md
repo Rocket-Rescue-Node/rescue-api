@@ -44,8 +44,6 @@ Usage of ./rescue-api:
 	Address on which to listen for /metrics requests (default "0.0.0.0:9000")
   -rescue-proxy-api-addr string
 	Address for the Rescue Proxy gRPC API
-  -rocketscan-api-url string
-	URL for the Rocketscan REST API
   -secure-grpc
 	Whether to use gRPC over TLS (default true)
 ```
