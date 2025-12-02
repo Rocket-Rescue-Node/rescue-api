@@ -92,7 +92,6 @@ func main() {
 	nodes := models.NewNodeRegistry()
 	updateNodes := tasks.NewUpdateNodesTask(
 		cfg.RescueProxyAPIAddr,
-		cfg.RocketscanAPIURL,
 		nodes,
 		cfg.SecureGRPC,
 		logger,
