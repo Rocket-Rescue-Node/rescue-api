@@ -72,6 +72,7 @@ func (t *UpdateNodesTask) Run() {
 				ticker.Reset(time.Duration(30) * time.Second)
 			}
 			// Otherwise, wait longer
+			t.nodes.LastUpdated = time.Now()
 			ticker.Reset(time.Duration(300) * time.Second)
 		}
 	}
