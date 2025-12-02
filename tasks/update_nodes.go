@@ -71,6 +71,8 @@ func (t *UpdateNodesTask) Run() {
 			if err != nil { // If sources fail, try again quickly.
 				ticker.Reset(time.Duration(30) * time.Second)
 			}
+			// Otherwise, wait longer
+			ticker.Reset(time.Duration(300) * time.Second)
 		}
 	}
 }
