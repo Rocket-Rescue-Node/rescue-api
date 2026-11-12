@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/jonboulle/clockwork v0.5.0
 	github.com/mattn/go-sqlite3 v1.14.18
-	github.com/rs/cors v1.10.1
+	github.com/rs/cors v1.11.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 	google.golang.org/grpc v1.83.2
