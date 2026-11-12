@@ -133,7 +133,114 @@ func (s *Service) Init() error {
 	if err := s.createTables(); err != nil {
 		return err
 	}
-	return s.prepareStatements()
+	if err := s.prepareStatements(); err != nil {
+		return err
+	}
+	s.registerLifetimeMetrics()
+	return nil
+}
+
+// LifetimeStats contains lifetime usage totals for the rescue node.
+type LifetimeStats struct {
+	AccessGrantedRocketpool int64
+	AccessGrantedSolo       int64
+	UsersRocketpool         int64
+	UsersSolo               int64
+}
+
+func (s *Service) registerLifetimeMetrics() {
+	// Lifetime times access was granted, by operator type.
+	// Sum these in Grafana for a total; no separate total metric is needed.
+	s.m.GaugeFunc("lifetime_access_granted_rocketpool", func() float64 {
+		n, err := s.countCredentialEvents(pb.OperatorType_OT_ROCKETPOOL)
+		if err != nil {
+			s.logger.Error("Failed to query lifetime access granted count",
+				zap.Int("operator_type", int(pb.OperatorType_OT_ROCKETPOOL)),
+				zap.Error(err),
+			)
+			return 0
+		}
+		return float64(n)
+	})
+	s.m.GaugeFunc("lifetime_access_granted_solo", func() float64 {
+		n, err := s.countCredentialEvents(pb.OperatorType_OT_SOLO)
+		if err != nil {
+			s.logger.Error("Failed to query lifetime access granted count",
+				zap.Int("operator_type", int(pb.OperatorType_OT_SOLO)),
+				zap.Error(err),
+			)
+			return 0
+		}
+		return float64(n)
+	})
+
+	// Lifetime distinct users (node IDs), by operator type.
+	s.m.GaugeFunc("lifetime_users_rocketpool", func() float64 {
+		n, err := s.countDistinctCredentialUsers(pb.OperatorType_OT_ROCKETPOOL)
+		if err != nil {
+			s.logger.Error("Failed to query lifetime users count",
+				zap.Int("operator_type", int(pb.OperatorType_OT_ROCKETPOOL)),
+				zap.Error(err),
+			)
+			return 0
+		}
+		return float64(n)
+	})
+	s.m.GaugeFunc("lifetime_users_solo", func() float64 {
+		n, err := s.countDistinctCredentialUsers(pb.OperatorType_OT_SOLO)
+		if err != nil {
+			s.logger.Error("Failed to query lifetime users count",
+				zap.Int("operator_type", int(pb.OperatorType_OT_SOLO)),
+				zap.Error(err),
+			)
+			return 0
+		}
+		return float64(n)
+	})
+}
+
+// GetLifetimeStats returns lifetime access-granted and distinct-user counts by operator type.
+func (s *Service) GetLifetimeStats() (*LifetimeStats, error) {
+	accessRP, err := s.countCredentialEvents(pb.OperatorType_OT_ROCKETPOOL)
+	if err != nil {
+		return nil, err
+	}
+	accessSolo, err := s.countCredentialEvents(pb.OperatorType_OT_SOLO)
+	if err != nil {
+		return nil, err
+	}
+	usersRP, err := s.countDistinctCredentialUsers(pb.OperatorType_OT_ROCKETPOOL)
+	if err != nil {
+		return nil, err
+	}
+	usersSolo, err := s.countDistinctCredentialUsers(pb.OperatorType_OT_SOLO)
+	if err != nil {
+		return nil, err
+	}
+	return &LifetimeStats{
+		AccessGrantedRocketpool: accessRP,
+		AccessGrantedSolo:       accessSolo,
+		UsersRocketpool:         usersRP,
+		UsersSolo:               usersSolo,
+	}, nil
+}
+
+func (s *Service) countCredentialEvents(ot pb.OperatorType) (int64, error) {
+	var count int64
+	err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM credential_events WHERE operator_type = ?;`,
+		ot,
+	).Scan(&count)
+	return count, err
+}
+
+func (s *Service) countDistinctCredentialUsers(ot pb.OperatorType) (int64, error) {
+	var count int64
+	err := s.db.QueryRow(
+		`SELECT COUNT(DISTINCT node_id) FROM credential_events WHERE operator_type = ?;`,
+		ot,
+	).Scan(&count)
+	return count, err
 }
 
 func (s *Service) migrateTables() error {
@@ -382,6 +489,10 @@ func (s *Service) Deinit() {
 		}
 		(*stmt).Close()
 		*stmt = nil
+	}
+
+	if s.m != nil {
+		s.m.UnregisterAll()
 	}
 }
 
