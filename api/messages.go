@@ -86,6 +86,16 @@ type OperatorInfoResponse struct {
 	QuotaSettings    *json.RawMessage `json:"quotaSettings"`
 }
 
+type LifetimeStatsByType struct {
+	Rocketpool int64 `json:"rocketpool"`
+	Solo       int64 `json:"solo"`
+}
+
+type LifetimeStatsResponse struct {
+	AccessGranted LifetimeStatsByType `json:"accessGranted"`
+	Users         LifetimeStatsByType `json:"users"`
+}
+
 func validateJSONRequest(r *http.Request, req interface{}) error {
 	var err error
 

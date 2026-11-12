@@ -107,6 +107,26 @@ func (ar *apiRouter) GetOperatorInfo(w http.ResponseWriter, r *http.Request) err
 	return writeJSONResponse(w, http.StatusOK, resp, "")
 }
 
+func (ar *apiRouter) GetLifetimeStats(w http.ResponseWriter, r *http.Request) error {
+	stats, err := ar.svc.GetLifetimeStats()
+	if err != nil {
+		return writeJSONError(w, err)
+	}
+
+	resp := LifetimeStatsResponse{
+		AccessGranted: LifetimeStatsByType{
+			Rocketpool: stats.AccessGrantedRocketpool,
+			Solo:       stats.AccessGrantedSolo,
+		},
+		Users: LifetimeStatsByType{
+			Rocketpool: stats.UsersRocketpool,
+			Solo:       stats.UsersSolo,
+		},
+	}
+
+	return writeJSONResponse(w, http.StatusOK, resp, "")
+}
+
 // Wrapper to log unhandled errors.
 // Note that this wrapper is only for last resort errors. For example, caused by
 // error handling functions not being able to write a response to the client.
@@ -147,6 +167,8 @@ func NewAPIRouter(path string, svc *services.Service, origins []string, logger *
 	sr.HandleFunc("/credentials/", ah.wrapHandler(ah.CreateCredential)).Methods(allowedMethods...)
 	sr.HandleFunc("/info", ah.wrapHandler(ah.GetOperatorInfo)).Methods(allowedMethods...)
 	sr.HandleFunc("/info/", ah.wrapHandler(ah.GetOperatorInfo)).Methods(allowedMethods...)
+	sr.HandleFunc("/stats", ah.wrapHandler(ah.GetLifetimeStats)).Methods(allowedMethods...)
+	sr.HandleFunc("/stats/", ah.wrapHandler(ah.GetLifetimeStats)).Methods(allowedMethods...)
 
 	// CORS support.
 	ch := cors.New(cors.Options{
